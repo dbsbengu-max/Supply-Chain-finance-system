@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: scf-server
+  datasource:
+    url: jdbc:postgresql://localhost:5432/scf
+    username: scf
+    password: scf_dev_pass
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: scf
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+  flyway:
+    enabled: true
+    schemas: scf
+    default-schema: scf
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+
+scf:
+  jwt:
+    secret: scf-dev-jwt-secret-change-in-production-min-256-bits!!
+    expiration-ms: 86400000
+  idempotency:
+    retention-days: 180
+  bank:
+    callback:
+      token: mock-bank-callback-token
+  file:
+    storage-dir: ./data/uploads
+    storage-bucket: local
+    max-size-bytes: 10485760
+    allowed-extensions:
+      - pdf
+      - jpg
+      - jpeg
+      - png
+      - xlsx
+      - xls
+      - doc
+      - docx
+    allowed-mime-types:
+      - application/pdf
+      - image/jpeg
+      - image/png
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/vnd.ms-excel
+      - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+      - application/msword
+
+logging:
+  level:
+    com.scf: DEBUG

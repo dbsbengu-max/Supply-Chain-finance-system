@@ -1,0 +1,20 @@
+# Build
+backend/scf-server/target/
+backend/**/target/
+frontend/scf-web/node_modules/
+frontend/scf-web/dist/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs / env
+*.log
+.env
+.env.*
+
+# Test artifacts
+backend/scf-server/target/cp-jars/
