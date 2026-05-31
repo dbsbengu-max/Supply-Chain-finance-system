@@ -16,6 +16,16 @@
           />
         </el-select>
       </el-form-item>
+      <el-form-item label="Saga">
+        <el-select v-model="filters.saga_status" clearable placeholder="全部" style="width: 120px">
+          <el-option
+            v-for="item in meta?.saga_statuses || []"
+            :key="item.code"
+            :label="item.label"
+            :value="item.code"
+          />
+        </el-select>
+      </el-form-item>
       <el-form-item label="订单/备货">
         <el-select v-model="filters.order_mode" clearable placeholder="全部" style="width: 140px">
           <el-option
@@ -80,6 +90,14 @@
           {{ agencyPurchaseStatusLabel(meta, row.application_status) }}
         </template>
       </el-table-column>
+      <el-table-column label="Saga" width="90">
+        <template #default="{ row }">
+          <el-tag v-if="row.saga_status" :type="sagaStatusTagType(row.saga_status)" size="small">
+            {{ agencyPurchaseSagaStatusLabel(row.saga_status) }}
+          </el-tag>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="created_at" label="创建时间" width="180" />
       <el-table-column label="操作" width="260" fixed="right">
         <template #default="{ row }">
@@ -121,10 +139,12 @@ import {
 } from '../api/agencyPurchase'
 import {
   agencyPurchaseModeLabel,
+  agencyPurchaseSagaStatusLabel,
   agencyPurchaseStatusLabel,
   isCancellableStatus,
   isDraftStatus,
-  loadAgencyPurchaseMeta
+  loadAgencyPurchaseMeta,
+  sagaStatusTagType
 } from '../constants/agencyPurchaseDict'
 import { usePermission } from '../composables/usePermission'
 
@@ -140,6 +160,7 @@ const applications = ref<AgencyPurchaseApplication[]>([])
 const dateRange = ref<[string, string] | null>(null)
 const filters = reactive({
   application_status: '',
+  saga_status: '',
   order_mode: '',
   fund_source: '',
   pickup_type: '',
@@ -157,6 +178,7 @@ async function load() {
       page_no: 1,
       page_size: 50,
       application_status: filters.application_status || undefined,
+      saga_status: filters.saga_status || undefined,
       order_mode: filters.order_mode || undefined,
       fund_source: filters.fund_source || undefined,
       pickup_type: filters.pickup_type || undefined,
@@ -174,6 +196,7 @@ async function load() {
 
 function resetFilters() {
   filters.application_status = ''
+  filters.saga_status = ''
   filters.order_mode = ''
   filters.fund_source = ''
   filters.pickup_type = ''

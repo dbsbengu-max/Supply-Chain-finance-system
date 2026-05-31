@@ -66,6 +66,13 @@ public final class AgencyPurchaseModeCatalog {
                 new DictItem("CANCELLED", "已取消"));
     }
 
+    public static List<DictItem> sagaStatuses() {
+        return List.of(
+                new DictItem("RUNNING", "执行中"),
+                new DictItem("SUCCESS", "成功"),
+                new DictItem("FAILED", "失败"));
+    }
+
     public static ModeDefinition resolve(String orderMode, String fundSource, String pickupType) {
         return find(orderMode, fundSource, pickupType)
                 .orElseThrow(() -> new BusinessException(

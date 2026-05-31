@@ -75,3 +75,75 @@ export function isDraftStatus(status: string) {
 export function isCancellableStatus(status: string) {
   return status === 'DRAFT' || status === 'SUBMITTED' || status === 'REVIEWING'
 }
+
+const SAGA_STEP_LABELS: Record<string, string> = {
+  ORDER_CONFIRM: '订单确认',
+  MARGIN_FREEZE: '保证金冻结',
+  INVENTORY_FREEZE: '库存冻结',
+  FINANCE_CREATE: '融资申请创建'
+}
+
+const SAGA_STATUS_LABELS: Record<string, string> = {
+  RUNNING: '执行中',
+  SUCCESS: '成功',
+  FAILED: '失败'
+}
+
+const SAGA_STEP_STATUS_LABELS: Record<string, string> = {
+  SUCCESS: '成功',
+  FAILED: '失败',
+  SKIPPED: '跳过'
+}
+
+const COMPENSATION_TYPE_LABELS: Record<string, string> = {
+  MARGIN_UNFREEZE: '保证金解冻',
+  INVENTORY_UNFREEZE: '库存解冻'
+}
+
+const COMPENSATION_STATUS_LABELS: Record<string, string> = {
+  PENDING: '待执行',
+  SUCCESS: '成功',
+  FAILED: '失败'
+}
+
+export function agencyPurchaseSagaStatusLabel(code: string | undefined) {
+  if (!code) return '未启动'
+  return SAGA_STATUS_LABELS[code] ?? code
+}
+
+export function agencyPurchaseSagaStepLabel(stepCode: string) {
+  return SAGA_STEP_LABELS[stepCode] ?? stepCode
+}
+
+export function agencyPurchaseSagaStepStatusLabel(status: string) {
+  return SAGA_STEP_STATUS_LABELS[status] ?? status
+}
+
+export function sagaStepTagType(status: string): 'success' | 'danger' | 'info' | 'warning' {
+  if (status === 'SUCCESS') return 'success'
+  if (status === 'FAILED') return 'danger'
+  if (status === 'SKIPPED') return 'info'
+  return 'warning'
+}
+
+export function sagaStatusTagType(status: string | undefined): 'success' | 'danger' | 'info' | 'warning' {
+  if (status === 'SUCCESS') return 'success'
+  if (status === 'FAILED') return 'danger'
+  if (status === 'RUNNING') return 'warning'
+  return 'info'
+}
+
+export function agencyPurchaseCompensationTypeLabel(code: string) {
+  return COMPENSATION_TYPE_LABELS[code] ?? code
+}
+
+export function agencyPurchaseCompensationStatusLabel(code: string) {
+  return COMPENSATION_STATUS_LABELS[code] ?? code
+}
+
+export function compensationStatusTagType(status: string): 'success' | 'danger' | 'info' | 'warning' {
+  if (status === 'SUCCESS') return 'success'
+  if (status === 'FAILED') return 'danger'
+  if (status === 'PENDING') return 'warning'
+  return 'info'
+}

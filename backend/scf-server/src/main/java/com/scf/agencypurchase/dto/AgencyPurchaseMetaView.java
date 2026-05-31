@@ -10,6 +10,7 @@ public record AgencyPurchaseMetaView(
         @JsonProperty("fund_sources") List<AgencyPurchaseModeCatalog.DictItem> fundSources,
         @JsonProperty("pickup_types") List<AgencyPurchaseModeCatalog.DictItem> pickupTypes,
         @JsonProperty("application_statuses") List<AgencyPurchaseModeCatalog.DictItem> applicationStatuses,
+        @JsonProperty("saga_statuses") List<AgencyPurchaseModeCatalog.DictItem> sagaStatuses,
         @JsonProperty("valid_modes") List<AgencyPurchaseModeCatalog.ModeDefinition> validModes,
         @JsonProperty("cross_domain_actions") List<CrossDomainAction> crossDomainActions
 ) {
@@ -22,6 +23,7 @@ public record AgencyPurchaseMetaView(
                 AgencyPurchaseModeCatalog.fundSources(),
                 AgencyPurchaseModeCatalog.pickupTypes(),
                 AgencyPurchaseModeCatalog.applicationStatuses(),
+                AgencyPurchaseModeCatalog.sagaStatuses(),
                 AgencyPurchaseModeCatalog.allModes(),
                 List.of(
                         new CrossDomainAction("PAY", "登记/发起付款", "待 Saga/资金模块接入"),

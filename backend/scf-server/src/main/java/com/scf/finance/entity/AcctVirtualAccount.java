@@ -95,6 +95,10 @@ public class AcctVirtualAccount {
         this.balance = balance;
     }
 
+    public void setFrozenBalance(BigDecimal frozenBalance) {
+        this.frozenBalance = frozenBalance;
+    }
+
     public String getStatus() {
         return status;
     }

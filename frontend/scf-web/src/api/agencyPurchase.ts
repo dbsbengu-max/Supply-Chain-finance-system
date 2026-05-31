@@ -26,6 +26,22 @@ export interface AgencyPurchaseMeta {
   application_statuses: DictItem[]
   valid_modes: ValidMode[]
   cross_domain_actions: CrossDomainAction[]
+  saga_statuses?: DictItem[]
+}
+
+export interface AgencyPurchaseSagaStep {
+  step_code: string
+  step_status: string
+  detail_json?: string
+  executed_at?: string
+}
+
+export interface AgencyPurchaseCompensationTask {
+  id: string
+  compensation_type: string
+  compensation_status: string
+  created_at?: string
+  executed_at?: string
 }
 
 export interface AgencyPurchaseApplication {
@@ -43,6 +59,16 @@ export interface AgencyPurchaseApplication {
   application_status: string
   remark?: string
   bpm_instance_id?: string
+  inventory_id?: string
+  margin_account_id?: string
+  margin_amount?: string
+  margin_frozen_amount?: string
+  inventory_freeze_quantity?: string
+  finance_application_id?: string
+  saga_status?: string
+  saga_last_error?: string
+  saga_steps?: AgencyPurchaseSagaStep[]
+  compensation_tasks?: AgencyPurchaseCompensationTask[]
   created_by: string
   created_at: string
   updated_at?: string
@@ -57,6 +83,7 @@ export async function listAgencyPurchaseApplications(params?: {
   page_no?: number
   page_size?: number
   application_status?: string
+  saga_status?: string
   order_mode?: string
   fund_source?: string
   pickup_type?: string
@@ -70,6 +97,11 @@ export async function listAgencyPurchaseApplications(params?: {
 
 export async function getAgencyPurchaseApplication(id: string) {
   const res = await http.get(`/agency-purchase/applications/${id}`)
+  return res.data
+}
+
+export async function getAgencyPurchaseApplicationDetail(id: string) {
+  const res = await http.get(`/agency-purchase/applications/${id}/detail`)
   return res.data
 }
 

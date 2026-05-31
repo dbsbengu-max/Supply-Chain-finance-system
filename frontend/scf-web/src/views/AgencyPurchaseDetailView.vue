@@ -44,30 +44,84 @@
       <el-descriptions-item label="关联订单 ID">{{ app.order_id || '-' }}</el-descriptions-item>
       <el-descriptions-item label="金额">{{ app.total_amount }} {{ app.currency }}</el-descriptions-item>
       <el-descriptions-item label="BPM 实例">{{ app.bpm_instance_id || '未启动' }}</el-descriptions-item>
+      <el-descriptions-item label="Saga 状态">
+        <el-tag :type="sagaStatusTagType(app.saga_status)" size="small">
+          {{ agencyPurchaseSagaStatusLabel(app.saga_status) }}
+        </el-tag>
+      </el-descriptions-item>
+      <el-descriptions-item v-if="app.margin_account_id" label="保证金账户">
+        {{ app.margin_account_id }}
+      </el-descriptions-item>
+      <el-descriptions-item v-if="app.margin_frozen_amount" label="已冻保证金">
+        {{ app.margin_frozen_amount }} {{ app.currency }}
+      </el-descriptions-item>
+      <el-descriptions-item v-if="app.inventory_id" label="库存 ID">
+        {{ app.inventory_id }}
+      </el-descriptions-item>
+      <el-descriptions-item v-if="app.finance_application_id" label="融资申请 ID">
+        {{ app.finance_application_id }}
+      </el-descriptions-item>
       <el-descriptions-item label="创建时间">{{ app.created_at }}</el-descriptions-item>
       <el-descriptions-item label="备注" :span="2">{{ app.remark || '-' }}</el-descriptions-item>
+      <el-descriptions-item v-if="app.saga_last_error" label="Saga 错误" :span="2">
+        <span class="saga-error">{{ app.saga_last_error }}</span>
+      </el-descriptions-item>
     </el-descriptions>
 
-    <el-divider content-position="left">跨域动作（占位）</el-divider>
-    <div class="cross-domain">
-      <el-tooltip
-        v-for="action in meta?.cross_domain_actions || []"
-        :key="action.code"
-        :content="action.hint"
-        placement="top"
-      >
-        <span>
-          <el-button disabled>{{ action.label }}</el-button>
-        </span>
-      </el-tooltip>
-    </div>
-    <el-alert
-      type="warning"
-      :closable="false"
-      show-icon
-      title="以上按钮为跨域动作占位，待 Saga/资金/仓储模块接入后启用。"
-      style="margin-top: 12px"
-    />
+    <template v-if="app && showSagaTimeline">
+      <el-divider content-position="left">跨域 Saga 时间线</el-divider>
+      <el-steps :active="sagaActiveStep" finish-status="success" align-center class="saga-steps">
+        <el-step
+          v-for="step in orderedSagaSteps"
+          :key="step.step_code"
+          :title="agencyPurchaseSagaStepLabel(step.step_code)"
+          :status="elStepStatus(step.step_status)"
+        >
+          <template #description>
+            <div class="step-desc">
+              <el-tag :type="sagaStepTagType(step.step_status)" size="small">
+                {{ agencyPurchaseSagaStepStatusLabel(step.step_status) }}
+              </el-tag>
+              <span v-if="step.executed_at" class="step-time">{{ step.executed_at }}</span>
+              <span v-if="step.detail_json" class="step-detail">{{ step.detail_json }}</span>
+            </div>
+          </template>
+        </el-step>
+      </el-steps>
+      <el-alert
+        v-if="app.saga_status === 'FAILED'"
+        type="error"
+        :closable="false"
+        show-icon
+        title="Saga 执行失败，已记录失败步骤；若已完成步骤涉及资金/库存冻结，系统将写入补偿任务队列。"
+        style="margin-top: 12px"
+      />
+    </template>
+
+    <template v-else-if="app && app.application_status === 'APPROVED'">
+      <el-divider content-position="left">跨域 Saga 时间线</el-divider>
+      <el-alert type="info" :closable="false" show-icon title="审批已通过，Saga 尚未启动或正在等待 Outbox 投递。"       />
+    </template>
+
+    <template v-if="app?.compensation_tasks?.length">
+      <el-divider content-position="left">补偿任务</el-divider>
+      <el-table :data="app.compensation_tasks" size="small" stripe>
+        <el-table-column label="类型" min-width="140">
+          <template #default="{ row }">
+            {{ agencyPurchaseCompensationTypeLabel(row.compensation_type) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="compensationStatusTagType(row.compensation_status)" size="small">
+              {{ agencyPurchaseCompensationStatusLabel(row.compensation_status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="created_at" label="创建时间" width="180" />
+        <el-table-column prop="executed_at" label="执行时间" width="180" />
+      </el-table>
+    </template>
   </div>
 </template>
 
@@ -77,22 +131,33 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   cancelAgencyPurchaseApplication,
-  getAgencyPurchaseApplication,
+  getAgencyPurchaseApplicationDetail,
   submitAgencyPurchaseApplication,
   type AgencyPurchaseApplication,
-  type AgencyPurchaseMeta
+  type AgencyPurchaseMeta,
+  type AgencyPurchaseSagaStep
 } from '../api/agencyPurchase'
 import {
   agencyPurchaseFundSourceLabel,
   agencyPurchaseModeLabel,
   agencyPurchaseOrderModeLabel,
   agencyPurchasePickupTypeLabel,
+  agencyPurchaseSagaStatusLabel,
+  agencyPurchaseSagaStepLabel,
+  agencyPurchaseSagaStepStatusLabel,
+  agencyPurchaseCompensationTypeLabel,
+  agencyPurchaseCompensationStatusLabel,
   agencyPurchaseStatusLabel,
   isCancellableStatus,
   isDraftStatus,
-  loadAgencyPurchaseMeta
+  loadAgencyPurchaseMeta,
+  sagaStatusTagType,
+  sagaStepTagType,
+  compensationStatusTagType
 } from '../constants/agencyPurchaseDict'
 import { usePermission } from '../composables/usePermission'
+
+const SAGA_STEP_ORDER = ['ORDER_CONFIRM', 'MARGIN_FREEZE', 'INVENTORY_FREEZE', 'FINANCE_CREATE']
 
 const route = useRoute()
 const router = useRouter()
@@ -106,11 +171,37 @@ const meta = ref<AgencyPurchaseMeta | null>(null)
 const app = ref<AgencyPurchaseApplication | null>(null)
 const applicationId = computed(() => route.params.id as string)
 
+const showSagaTimeline = computed(
+  () => !!app.value?.saga_steps?.length || !!app.value?.saga_status
+)
+
+const orderedSagaSteps = computed(() => {
+  const steps = app.value?.saga_steps ?? []
+  const byCode = new Map(steps.map((s) => [s.step_code, s]))
+  return SAGA_STEP_ORDER.filter((code) => byCode.has(code)).map(
+    (code) => byCode.get(code) as AgencyPurchaseSagaStep
+  )
+})
+
+const sagaActiveStep = computed(() => {
+  const steps = orderedSagaSteps.value
+  const failedIdx = steps.findIndex((s) => s.step_status === 'FAILED')
+  if (failedIdx >= 0) return failedIdx
+  const successCount = steps.filter((s) => s.step_status === 'SUCCESS' || s.step_status === 'SKIPPED').length
+  return app.value?.saga_status === 'SUCCESS' ? steps.length : successCount
+})
+
+function elStepStatus(stepStatus: string): '' | 'wait' | 'process' | 'finish' | 'error' | 'success' {
+  if (stepStatus === 'SUCCESS' || stepStatus === 'SKIPPED') return 'success'
+  if (stepStatus === 'FAILED') return 'error'
+  return 'process'
+}
+
 async function load() {
   loading.value = true
   try {
     meta.value = await loadAgencyPurchaseMeta()
-    const res = await getAgencyPurchaseApplication(applicationId.value)
+    const res = await getAgencyPurchaseApplicationDetail(applicationId.value)
     if (!res.success) throw new Error(res.message)
     app.value = res.data
   } catch (e: any) {
@@ -133,7 +224,7 @@ async function onSubmit() {
   try {
     const res = await submitAgencyPurchaseApplication(applicationId.value)
     if (!res.success) throw new Error(res.message)
-    ElMessage.success('已提交，进入 BPM 待办占位')
+    ElMessage.success('已提交，进入 BPM 待办')
     await load()
   } catch (e: any) {
     ElMessage.error(e.message || '提交失败')
@@ -166,9 +257,27 @@ onMounted(load)
   display: flex;
   gap: 8px;
 }
-.cross-domain {
+.saga-steps {
+  margin: 8px 0 16px;
+}
+.step-desc {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+.step-time {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.step-detail {
+  font-size: 12px;
+  color: var(--el-color-danger);
+  max-width: 180px;
+  word-break: break-all;
+}
+.saga-error {
+  color: var(--el-color-danger);
 }
 </style>

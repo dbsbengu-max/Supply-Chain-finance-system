@@ -15,6 +15,7 @@ import com.scf.finance.dto.FinanceCreateRequest;
 import com.scf.finance.dto.FinanceDisburseRequest;
 import com.scf.finance.dto.FinanceDisburseView;
 import com.scf.finance.dto.FinanceView;
+import com.scf.agencypurchase.entity.ApAgencyPurchaseApplication;
 import com.scf.finance.entity.AcctVirtualAccount;
 import com.scf.finance.entity.FnDisbursement;
 import com.scf.finance.entity.FnFinanceApplication;
@@ -148,6 +149,36 @@ public class FinanceApplicationService {
         auditLogService.log("FINANCE_CREATE", "FINANCE_APPLICATION", app.getId(), null,
                 Map.of("finance_no", app.getFinanceNo()));
         return FinanceView.from(app);
+    }
+
+    @Transactional
+    public String createFromAgencyPurchase(ApAgencyPurchaseApplication agencyApp) {
+        FnFinanceApplication app = new FnFinanceApplication();
+        app.setId(IdGenerator.nextId());
+        app.setOperatorId(agencyApp.getOperatorId());
+        app.setProjectId(agencyApp.getProjectId());
+        app.setFinanceNo("FIN-AGP-" + System.currentTimeMillis());
+        app.setCustomerId(agencyApp.getCustomerId());
+        app.setFundingPartyId("ENT_FACTOR_001");
+        app.setProductType("AGENCY_PURCHASE");
+        app.setSourceType("AGENCY_PURCHASE");
+        app.setSourceId(agencyApp.getId());
+        app.setApplyAmount(agencyApp.getTotalAmount());
+        app.setCurrency(agencyApp.getCurrency());
+        app.setTermDays(90);
+        app.setAnnualRate(new BigDecimal("0.085000"));
+        app.setDisbursedAmount(BigDecimal.ZERO);
+        app.setFinanceStatus("DRAFT");
+        app.setCreatedBy(agencyApp.getCreatedBy());
+        app.setCreatedAt(Instant.now());
+        app.setDeletedFlag((short) 0);
+        app.setVersionNo(1);
+        repository.save(app);
+        auditLogService.logAsSystem(
+                "system", agencyApp.getOperatorId(), agencyApp.getProjectId(), null,
+                "FINANCE_CREATE", "FINANCE_APPLICATION", app.getId(), null,
+                Map.of("finance_no", app.getFinanceNo(), "source", "AGENCY_PURCHASE_SAGA"));
+        return app.getId();
     }
 
     @Transactional

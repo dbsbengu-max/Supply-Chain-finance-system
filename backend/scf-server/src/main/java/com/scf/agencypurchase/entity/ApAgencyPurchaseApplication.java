@@ -60,6 +60,30 @@ public class ApAgencyPurchaseApplication {
     @Column(name = "bpm_instance_id")
     private String bpmInstanceId;
 
+    @Column(name = "inventory_id")
+    private String inventoryId;
+
+    @Column(name = "margin_account_id")
+    private String marginAccountId;
+
+    @Column(name = "margin_amount")
+    private BigDecimal marginAmount;
+
+    @Column(name = "margin_frozen_amount")
+    private BigDecimal marginFrozenAmount;
+
+    @Column(name = "inventory_freeze_quantity")
+    private BigDecimal inventoryFreezeQuantity;
+
+    @Column(name = "finance_application_id")
+    private String financeApplicationId;
+
+    @Column(name = "saga_status")
+    private String sagaStatus;
+
+    @Column(name = "saga_last_error")
+    private String sagaLastError;
+
     @Column(name = "created_by", nullable = false)
     private String createdBy;
 
@@ -110,6 +134,22 @@ public class ApAgencyPurchaseApplication {
     public void setRemark(String remark) { this.remark = remark; }
     public String getBpmInstanceId() { return bpmInstanceId; }
     public void setBpmInstanceId(String bpmInstanceId) { this.bpmInstanceId = bpmInstanceId; }
+    public String getInventoryId() { return inventoryId; }
+    public void setInventoryId(String inventoryId) { this.inventoryId = inventoryId; }
+    public String getMarginAccountId() { return marginAccountId; }
+    public void setMarginAccountId(String marginAccountId) { this.marginAccountId = marginAccountId; }
+    public BigDecimal getMarginAmount() { return marginAmount; }
+    public void setMarginAmount(BigDecimal marginAmount) { this.marginAmount = marginAmount; }
+    public BigDecimal getMarginFrozenAmount() { return marginFrozenAmount; }
+    public void setMarginFrozenAmount(BigDecimal marginFrozenAmount) { this.marginFrozenAmount = marginFrozenAmount; }
+    public BigDecimal getInventoryFreezeQuantity() { return inventoryFreezeQuantity; }
+    public void setInventoryFreezeQuantity(BigDecimal inventoryFreezeQuantity) { this.inventoryFreezeQuantity = inventoryFreezeQuantity; }
+    public String getFinanceApplicationId() { return financeApplicationId; }
+    public void setFinanceApplicationId(String financeApplicationId) { this.financeApplicationId = financeApplicationId; }
+    public String getSagaStatus() { return sagaStatus; }
+    public void setSagaStatus(String sagaStatus) { this.sagaStatus = sagaStatus; }
+    public String getSagaLastError() { return sagaLastError; }
+    public void setSagaLastError(String sagaLastError) { this.sagaLastError = sagaLastError; }
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
     public Instant getCreatedAt() { return createdAt; }
