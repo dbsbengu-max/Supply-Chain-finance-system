@@ -204,6 +204,7 @@ class AgencyPurchaseIntegrationTest {
                   "customer_id": "%s",
                   "trade_company_id": "%s",
                   "order_id": "%s",
+                  "margin_account_id": "ACC_MARGIN_001",
                   "currency": "CNY",
                   "total_amount": "%s",
                   "remark": "integration-test"
