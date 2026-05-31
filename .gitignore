@@ -3,6 +3,9 @@ backend/scf-server/target/
 backend/**/target/
 frontend/scf-web/node_modules/
 frontend/scf-web/dist/
+frontend/scf-web/test-results/
+frontend/scf-web/playwright-report/
+frontend/scf-web/blob-report/
 frontend/scf-web/*.tsbuildinfo
 **/tsconfig.tsbuildinfo
 
