@@ -1,0 +1,97 @@
+# EA-034 Staging gate — seed archive + alerts watch sample + summary
+# Usage: .\run-staging-gate.ps1 [-SkipAlertsWatch] [-WatchMinutes 30]
+
+param(
+    [string]$EnvFile,
+    [string]$ArchiveDir,
+    [string]$BackendUrl,
+    [int]$WatchMinutes = 30,
+    [int]$WatchIntervalMinutes = 5,
+    [switch]$SkipAlertsWatch
+)
+
+$ErrorActionPreference = "Stop"
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$PilotRoot = Resolve-Path (Join-Path $ScriptDir "..")
+
+if (-not $EnvFile) { $EnvFile = Join-Path $PilotRoot ".env" }
+if (-not $ArchiveDir) { $ArchiveDir = Join-Path $PilotRoot "evidence\staging" }
+$ArchiveDir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ArchiveDir)
+New-Item -ItemType Directory -Force -Path $ArchiveDir | Out-Null
+
+if (-not (Test-Path $EnvFile)) {
+    Write-Host "FAIL  Missing $EnvFile — copy .env.staging.example to .env" -ForegroundColor Red
+    exit 1
+}
+
+Get-Content $EnvFile | ForEach-Object {
+    if ($_ -match '^\s*#' -or $_ -match '^\s*$') { return }
+    $k, $v = $_ -split '=', 2
+    if ($k -and $null -ne $v) { Set-Item -Path "env:$k" -Value $v.Trim() }
+}
+
+if (-not $BackendUrl) { $BackendUrl = $env:SCF_API_HEALTH_URL }
+
+$ts = Get-Date -Format "yyyyMMdd-HHmmss"
+$summaryPath = Join-Path $ArchiveDir "staging-gate-${ts}.summary.md"
+$steps = @()
+
+function Step {
+    param([string]$Name, [scriptblock]$Action)
+    Write-Host "`n>> $Name" -ForegroundColor Cyan
+    & $Action
+    $code = $LASTEXITCODE
+    $ok = ($code -eq 0)
+    $script:steps += [pscustomobject]@{ Step = $Name; OK = $ok; Exit = $code }
+    if (-not $ok) { Write-Host "FAIL $Name (exit $code)" -ForegroundColor Red }
+    else { Write-Host "PASS $Name" -ForegroundColor Green }
+}
+
+Step "verify-pilot-seed (archive)" {
+    & (Join-Path $ScriptDir "verify-pilot-seed.ps1") -ArchiveDir $ArchiveDir
+}
+
+Step "check-pilot-alerts StrictStale (once)" {
+    $args = @("-StrictStale")
+    if ($BackendUrl) { $args += @("-BackendUrl", $BackendUrl) }
+    & (Join-Path $PilotRoot "monitoring\check-pilot-alerts.ps1") @args
+}
+
+if (-not $SkipAlertsWatch) {
+    $iterations = [Math]::Max(1, [int]($WatchMinutes / $WatchIntervalMinutes))
+    Step "alerts watch ${WatchMinutes}m (StrictStale x$iterations)" {
+        $watchArgs = @("-IntervalMinutes", $WatchIntervalMinutes, "-Iterations", $iterations, "-ArchiveDir", $ArchiveDir)
+        if ($BackendUrl) { $watchArgs += @("-BackendUrl", $BackendUrl) }
+        & (Join-Path $ScriptDir "run-alerts-watch.ps1") @watchArgs
+    }
+}
+
+$allPass = ($steps | Where-Object { -not $_.OK }).Count -eq 0
+$md = @(
+    "# EA-034 Staging Gate Summary",
+    "",
+    "| Field | Value |",
+    "|---|---|",
+    "| Timestamp | $(Get-Date -Format o) |",
+    "| Env | $($env:SCF_ENV_NAME) |",
+    "| Health | $BackendUrl |",
+    "| Result | $(if ($allPass) { '**PASS**' } else { '**FAIL**' }) |",
+    "",
+    "## Steps",
+    "",
+    "| Step | OK | Exit |",
+    "|---|---|---|"
+)
+foreach ($s in $steps) {
+    $md += "| $($s.Step) | $(if ($s.OK) { 'PASS' } else { 'FAIL' }) | $($s.Exit) |"
+}
+$md += ""
+$md | Set-Content $summaryPath -Encoding UTF8
+Write-Host "`nSummary: $summaryPath" -ForegroundColor DarkGray
+
+if ($allPass) {
+    Write-Host ">>> STAGING GATE: PASS <<<" -ForegroundColor Green
+    exit 0
+}
+Write-Host ">>> STAGING GATE: FAIL <<<" -ForegroundColor Red
+exit 1

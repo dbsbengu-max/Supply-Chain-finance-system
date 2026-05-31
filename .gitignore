@@ -3,6 +3,9 @@ backend/scf-server/target/
 backend/**/target/
 frontend/scf-web/node_modules/
 frontend/scf-web/dist/
+frontend/scf-web/test-results/
+frontend/scf-web/playwright-report/
+frontend/scf-web/blob-report/
 frontend/scf-web/*.tsbuildinfo
 **/tsconfig.tsbuildinfo
 
@@ -17,6 +20,16 @@ Thumbs.db
 *.log
 .env
 .env.*
+!.env.example
+!**/.env.example
+!.env.staging.example
+!**/.env.staging.example
+
+# Staging gate evidence (generated on jump box)
+deploy/pilot/evidence/staging/*.log
+deploy/pilot/evidence/staging/staging-gate-*.summary.md
+deploy/pilot/evidence/staging/staging-validation-*.summary.md
+deploy/pilot/evidence/staging/ACCEPTANCE_staging_*.md
 
 # Test artifacts
 backend/scf-server/target/cp-jars/

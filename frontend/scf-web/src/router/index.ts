@@ -1,36 +1,37 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import LoginView from '../views/LoginView.vue'
-import DashboardLayout from '../layouts/DashboardLayout.vue'
-import WorkbenchView from '../views/WorkbenchView.vue'
-
-import EnterpriseListView from '../views/EnterpriseListView.vue'
-import ProjectListView from '../views/ProjectListView.vue'
-import OrderListView from '../views/OrderListView.vue'
-import PricingView from '../views/PricingView.vue'
-import FinanceListView from '../views/FinanceListView.vue'
-import AgencyPurchaseListView from '../views/AgencyPurchaseListView.vue'
-import AgencyPurchaseFormView from '../views/AgencyPurchaseFormView.vue'
-import AgencyPurchaseDetailView from '../views/AgencyPurchaseDetailView.vue'
-import OcrCenterView from '../views/OcrCenterView.vue'
-import ExcelImportView from '../views/ExcelImportView.vue'
-import WarehouseListView from '../views/WarehouseListView.vue'
-import WarehouseDetailView from '../views/WarehouseDetailView.vue'
-import InventoryListView from '../views/InventoryListView.vue'
-import InventoryDetailView from '../views/InventoryDetailView.vue'
-import BankFlowListView from '../views/BankFlowListView.vue'
-import ClearingWorkbenchView from '../views/ClearingWorkbenchView.vue'
-import ClearingRuleListView from '../views/ClearingRuleListView.vue'
-import BiDashboardView from '../views/BiDashboardView.vue'
-import RiskAlertCenterView from '../views/RiskAlertCenterView.vue'
-import InboxCenterView from '../views/InboxCenterView.vue'
-import AuditCenterView from '../views/AuditCenterView.vue'
-import SagaOpsCenterView from '../views/SagaOpsCenterView.vue'
-import PilotClosureView from '../views/PilotClosureView.vue'
-import VoucherListView from '../views/VoucherListView.vue'
-import VoucherDetailView from '../views/VoucherDetailView.vue'
-import ForbiddenView from '../views/ForbiddenView.vue'
 import { hasRoutePermission, routeRequiresPermission } from './permissions'
+
+const LoginView = () => import('../views/LoginView.vue')
+const DashboardLayout = () => import('../layouts/DashboardLayout.vue')
+const WorkbenchView = () => import('../views/WorkbenchView.vue')
+const ForbiddenView = () => import('../views/ForbiddenView.vue')
+
+const EnterpriseListView = () => import('../views/EnterpriseListView.vue')
+const ProjectListView = () => import('../views/ProjectListView.vue')
+const OrderListView = () => import('../views/OrderListView.vue')
+const PricingView = () => import('../views/PricingView.vue')
+const FinanceListView = () => import('../views/FinanceListView.vue')
+const AgencyPurchaseListView = () => import('../views/AgencyPurchaseListView.vue')
+const AgencyPurchaseFormView = () => import('../views/AgencyPurchaseFormView.vue')
+const AgencyPurchaseDetailView = () => import('../views/AgencyPurchaseDetailView.vue')
+const OcrCenterView = () => import('../views/OcrCenterView.vue')
+const ExcelImportView = () => import('../views/ExcelImportView.vue')
+const WarehouseListView = () => import('../views/WarehouseListView.vue')
+const WarehouseDetailView = () => import('../views/WarehouseDetailView.vue')
+const InventoryListView = () => import('../views/InventoryListView.vue')
+const InventoryDetailView = () => import('../views/InventoryDetailView.vue')
+const BankFlowListView = () => import('../views/BankFlowListView.vue')
+const ClearingWorkbenchView = () => import('../views/ClearingWorkbenchView.vue')
+const ClearingRuleListView = () => import('../views/ClearingRuleListView.vue')
+const BiDashboardView = () => import('../views/BiDashboardView.vue')
+const RiskAlertCenterView = () => import('../views/RiskAlertCenterView.vue')
+const InboxCenterView = () => import('../views/InboxCenterView.vue')
+const AuditCenterView = () => import('../views/AuditCenterView.vue')
+const SagaOpsCenterView = () => import('../views/SagaOpsCenterView.vue')
+const PilotClosureView = () => import('../views/PilotClosureView.vue')
+const VoucherListView = () => import('../views/VoucherListView.vue')
+const VoucherDetailView = () => import('../views/VoucherDetailView.vue')
 
 const router = createRouter({
   history: createWebHistory(),

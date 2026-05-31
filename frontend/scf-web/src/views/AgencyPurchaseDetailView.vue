@@ -68,6 +68,34 @@
       </el-descriptions-item>
     </el-descriptions>
 
+    <template v-if="app">
+      <el-divider content-position="left">试点闭环时间线</el-divider>
+      <el-row :gutter="16" class="closure-row">
+        <el-col :xs="24" :lg="14">
+          <PilotClosureTimeline :nodes="closureNodes" />
+        </el-col>
+        <el-col :xs="24" :lg="10">
+          <el-card shadow="never" class="quick-links">
+            <template #header>运营快捷入口</template>
+            <div class="link-grid">
+              <el-button @click="router.push(`/pilot/closure?agency_id=${applicationId}`)">试点向导</el-button>
+              <el-button @click="goSagaOps">Saga 监控</el-button>
+              <el-button v-if="app.finance_application_id" @click="goFinance">融资管理</el-button>
+              <el-button v-if="app.finance_application_id" @click="goClearing">清分中心</el-button>
+              <el-button @click="router.push('/bi/dashboard?from=pilot')">经营看板</el-button>
+              <el-button v-if="canViewAudit" @click="router.push('/audit/logs')">审计日志</el-button>
+            </div>
+            <p v-if="linkedFinance" class="finance-hint">
+              关联融资：{{ linkedFinance.finance_no }} ·
+              <el-tag :type="financeStatusTagType(linkedFinance.finance_status)" size="small">
+                {{ financeStatusLabel(linkedFinance.finance_status) }}
+              </el-tag>
+            </p>
+          </el-card>
+        </el-col>
+      </el-row>
+    </template>
+
     <template v-if="app && showSagaTimeline">
       <el-divider content-position="left">跨域 Saga 时间线</el-divider>
       <el-steps :active="sagaActiveStep" finish-status="success" align-center class="saga-steps">
@@ -120,6 +148,11 @@
         </el-table-column>
         <el-table-column prop="retry_count" label="重试" width="72" />
         <el-table-column prop="last_error" label="最近错误" min-width="160" show-overflow-tooltip />
+        <el-table-column label="操作" width="100" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="goSagaTask(row.id)">Saga 台</el-button>
+          </template>
+        </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="180" />
         <el-table-column prop="executed_at" label="执行时间" width="180" />
       </el-table>
@@ -139,6 +172,10 @@ import {
   type AgencyPurchaseMeta,
   type AgencyPurchaseSagaStep
 } from '../api/agencyPurchase'
+import { getFinanceApplication, type FinanceApplication } from '../api/finance'
+import PilotClosureTimeline from '../components/PilotClosureTimeline.vue'
+import { buildAgencyClosureTimeline } from '../utils/pilotClosureTimeline'
+import { financeStatusLabel, financeStatusTagType } from '../constants/financeDict'
 import {
   agencyPurchaseFundSourceLabel,
   agencyPurchaseModeLabel,
@@ -167,11 +204,17 @@ const { hasPermission } = usePermission()
 const canCreate = computed(() => hasPermission('AGENCY_PURCHASE_CREATE'))
 const canSubmit = computed(() => hasPermission('AGENCY_PURCHASE_SUBMIT'))
 const canCancel = computed(() => hasPermission('AGENCY_PURCHASE_CANCEL'))
+const canViewAudit = computed(() => hasPermission('AUDIT_VIEW'))
 
 const loading = ref(false)
 const meta = ref<AgencyPurchaseMeta | null>(null)
 const app = ref<AgencyPurchaseApplication | null>(null)
+const linkedFinance = ref<FinanceApplication | null>(null)
 const applicationId = computed(() => route.params.id as string)
+
+const closureNodes = computed(() =>
+  app.value ? buildAgencyClosureTimeline(app.value, linkedFinance.value) : []
+)
 
 const showSagaTimeline = computed(
   () => !!app.value?.saga_steps?.length || !!app.value?.saga_status
@@ -201,17 +244,44 @@ function elStepStatus(stepStatus: string): '' | 'wait' | 'process' | 'finish' | 
 
 async function load() {
   loading.value = true
+  linkedFinance.value = null
   try {
     meta.value = await loadAgencyPurchaseMeta()
     const res = await getAgencyPurchaseApplicationDetail(applicationId.value)
     if (!res.success) throw new Error(res.message)
     app.value = res.data
+    if (app.value?.finance_application_id) {
+      try {
+        const finRes = await getFinanceApplication(app.value.finance_application_id)
+        if (finRes.success) linkedFinance.value = finRes.data
+      } catch {
+        linkedFinance.value = null
+      }
+    }
   } catch (e: any) {
     ElMessage.error(e.message || '加载失败')
     goBack()
   } finally {
     loading.value = false
   }
+}
+
+function goSagaOps() {
+  router.push(`/saga/ops?tab=compensation&business_id=${applicationId.value}`)
+}
+
+function goFinance() {
+  const fid = app.value?.finance_application_id
+  if (fid) router.push(`/finance/applications?highlight=${fid}`)
+}
+
+function goClearing() {
+  const fid = app.value?.finance_application_id
+  if (fid) router.push(`/accounts/clearing?finance_id=${fid}`)
+}
+
+function goSagaTask(taskId: string) {
+  router.push(`/saga/ops?tab=compensation&business_id=${applicationId.value}&task_id=${taskId}`)
 }
 
 function goBack() {
@@ -281,5 +351,18 @@ onMounted(load)
 }
 .saga-error {
   color: var(--el-color-danger);
+}
+.closure-row {
+  margin-bottom: 8px;
+}
+.quick-links .link-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.finance-hint {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
 }
 </style>
