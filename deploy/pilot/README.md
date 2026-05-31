@@ -7,7 +7,8 @@ EA-032 运维闸门配套目录。上线前按顺序执行：
 3. 阅读 [`flyway/PRODUCTION_STRATEGY.md`](./flyway/PRODUCTION_STRATEGY.md) 执行数据库迁移
 4. 运行 [`scripts/pre-flight.ps1`](./scripts/pre-flight.ps1)（健康检查 + seed 核查）
 5. 按 [`uat/UAT_OPERATION_MANUAL.md`](./uat/UAT_OPERATION_MANUAL.md) 完成 UAT 签字
-6. 配置 [`logging/LOGGING_AUDIT.md`](./logging/LOGGING_AUDIT.md) 与 [`monitoring/ALERTING_CHECKLIST.md`](./monitoring/ALERTING_CHECKLIST.md)
-7. 确认 [`rollback/ROLLBACK_RUNBOOK.md`](./rollback/ROLLBACK_RUNBOOK.md) 已演练
+6. 配置 [`logging/LOGGING_AUDIT.md`](./logging/LOGGING_AUDIT.md)、[`logging/LOGBACK_MOUNT_EVAL.md`](./logging/LOGBACK_MOUNT_EVAL.md) 与 [`monitoring/ALERTING_CHECKLIST.md`](./monitoring/ALERTING_CHECKLIST.md)
+7. 试运行 [`monitoring/check-pilot-alerts.ps1`](./monitoring/check-pilot-alerts.ps1)（A-01/A-03/A-04）
+8. 确认 [`rollback/ROLLBACK_RUNBOOK.md`](./rollback/ROLLBACK_RUNBOOK.md) 已演练
 
-主文档：[`docs/EA-032_试点上线包与运维闸门_20260531.md`](../../docs/EA-032_试点上线包与运维闸门_20260531.md)
+主文档：[`docs/EA-033_试点生产安全加固与配置落地_20260531.md`](../../docs/EA-033_试点生产安全加固与配置落地_20260531.md)（EA-032：[`EA-032_…`](../../docs/EA-032_试点上线包与运维闸门_20260531.md)）

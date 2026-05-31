@@ -37,6 +37,8 @@ server:
     context-path: /api/v1
 
 scf:
+  dev:
+    password-bootstrap: false
   jwt:
     secret: ${SCF_JWT_SECRET}
     expiration-ms: ${SCF_JWT_EXPIRATION_MS:86400000}
@@ -71,3 +73,5 @@ logging:
   level:
     root: ${SCF_LOG_LEVEL_ROOT:INFO}
     com.scf: ${SCF_LOG_LEVEL_COM_SCF:INFO}
+  # External mount: file:/etc/scf/logback-spring.xml — see logging/LOGBACK_MOUNT_EVAL.md
+  config: ${SCF_LOGBACK_CONFIG:classpath:logback-spring.xml}

@@ -1,0 +1,31 @@
+# Pilot / production profile — secrets via environment only.
+spring:
+  datasource:
+    url: jdbc:postgresql://${SCF_DB_HOST:localhost}:${SCF_DB_PORT:5432}/${SCF_DB_NAME:scf}
+    username: ${SCF_DB_USER:scf}
+    password: ${SCF_DB_PASSWORD}
+  flyway:
+    clean-disabled: true
+    validate-on-migrate: true
+
+scf:
+  dev:
+    password-bootstrap: false
+  jwt:
+    secret: ${SCF_JWT_SECRET}
+    expiration-ms: ${SCF_JWT_EXPIRATION_MS:86400000}
+  idempotency:
+    retention-days: ${SCF_IDEMPOTENCY_RETENTION_DAYS:180}
+  bank:
+    callback:
+      token: ${SCF_BANK_CALLBACK_TOKEN}
+  file:
+    storage-dir: ${SCF_FILE_STORAGE_DIR:/var/scf/uploads}
+    storage-bucket: ${SCF_FILE_STORAGE_BUCKET:pilot}
+    max-size-bytes: ${SCF_FILE_MAX_SIZE_BYTES:10485760}
+
+logging:
+  level:
+    root: ${SCF_LOG_LEVEL_ROOT:INFO}
+    com.scf: ${SCF_LOG_LEVEL_COM_SCF:INFO}
+  config: ${SCF_LOGBACK_CONFIG:classpath:logback-spring.xml}

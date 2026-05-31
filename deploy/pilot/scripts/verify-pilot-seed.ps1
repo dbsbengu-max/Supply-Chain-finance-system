@@ -1,5 +1,10 @@
-# EA-032 Pilot seed verification (PowerShell)
+# EA-032/033 Pilot seed verification (PowerShell)
 # Requires: psql in PATH, deploy/pilot/.env or SCF_DB_* env vars
+# Usage: .\verify-pilot-seed.ps1 [-ArchiveDir deploy/pilot/evidence/staging]
+
+param(
+    [string]$ArchiveDir
+)
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -16,6 +21,11 @@ function Load-DotEnv {
 }
 
 Load-DotEnv (Join-Path $Root ".env")
+
+if ($ArchiveDir) {
+    $ArchiveDir = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ArchiveDir)
+    New-Item -ItemType Directory -Force -Path $ArchiveDir | Out-Null
+}
 
 $dbHost = $env:SCF_DB_HOST; if (-not $dbHost) { $dbHost = "localhost" }
 $port = $env:SCF_DB_PORT; if (-not $port) { $port = "5432" }
@@ -34,8 +44,25 @@ $sqlFile = Join-Path $ScriptDir "verify-pilot-seed.sql"
 Write-Host "=== EA-032 Seed Verification ===" -ForegroundColor Cyan
 Write-Host "Target: ${user}@${dbHost}:${port}/${db}"
 
+$archivePath = $null
+if ($ArchiveDir) {
+    $ts = Get-Date -Format "yyyyMMdd-HHmmss"
+    $archivePath = Join-Path $ArchiveDir "seed-verify-${ts}.log"
+    Write-Host "Archive: $archivePath" -ForegroundColor DarkGray
+}
+
 try {
-    psql -h $dbHost -p $port -U $user -d $db -f $sqlFile
+    if ($archivePath) {
+        @(
+            "=== EA-033 Staging Seed Verification ===",
+            "Timestamp: $(Get-Date -Format o)",
+            "Target: ${user}@${dbHost}:${port}/${db}",
+            ""
+        ) | Set-Content -Path $archivePath -Encoding UTF8
+        psql -h $dbHost -p $port -U $user -d $db -f $sqlFile 2>&1 | Tee-Object -FilePath $archivePath -Append
+    } else {
+        psql -h $dbHost -p $port -U $user -d $db -f $sqlFile
+    }
     if ($LASTEXITCODE -ne 0) { throw "psql exited $LASTEXITCODE" }
 } catch {
     Write-Host "FAIL  Seed verification: $_" -ForegroundColor Red
@@ -46,8 +73,10 @@ try {
 $mockCheck = psql -h $dbHost -p $port -U $user -d $db -t -A -c `
     "SET search_path TO scf; SELECT COUNT(*) FROM sys_user WHERE login_name='platform_admin' AND password_hash='mock_hash';"
 if ($mockCheck.Trim() -eq "1") {
-    Write-Host "WARN  platform_admin still has mock_hash — enable password bootstrap only in dev, or set password before pilot go-live" -ForegroundColor Yellow
+    Write-Host "WARN  platform_admin still has mock_hash — reset password before pilot go-live (prod disables DevDataInitializer)" -ForegroundColor Yellow
+    if ($archivePath) { "WARN platform_admin mock_hash=1" | Add-Content -Path $archivePath }
 }
 
 Write-Host "PASS  Seed verification SQL completed" -ForegroundColor Green
+if ($archivePath) { "RESULT: PASS" | Add-Content -Path $archivePath }
 exit 0

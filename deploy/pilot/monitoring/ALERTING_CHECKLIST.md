@@ -58,8 +58,19 @@ API 参考：`GET /api/v1/saga/ops/summary`（需 `SAGA_OPS_VIEW`）。
 - [ ] 制造测试 Outbox FAILED（test env）→ A-03 流程文档可用
 - [ ] 确认告警接收人收到通知
 
-## 7. Codex 下一轮
+## 7. Codex / 下一轮
 
-- 将 A-01–A-07 落地为脚本或 Prometheus rules
+- ~~将 A-01、A-03、A-04 落地为脚本~~ → **EA-033** `monitoring/check-*.ps1`
+- A-02 / A-05–A-07 落地为 Prometheus rules 或脚本（EA-034）
 - Saga summary 定时拉取 + Webhook
 - 与 EA-029 G2 补偿演练联动
+
+## 8. EA-033 脚本用法
+
+```powershell
+cd deploy\pilot\monitoring
+.\check-pilot-alerts.ps1 -BackendUrl http://127.0.0.1:8080/api/v1/actuator/health
+.\check-saga-alerts.ps1 -StrictStale   # A-03 含 30min Stale 则 FAIL
+```
+
+Cron（Windows 任务计划 / Linux crontab）建议每 **5 分钟** 运行 `check-pilot-alerts.ps1`，失败时调用 `SCF_OPS_ONCALL` 通知流程。

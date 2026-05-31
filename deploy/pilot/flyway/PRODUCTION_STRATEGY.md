@@ -22,9 +22,11 @@
 |---|---|---|
 | 本地 dev | 自动 migrate；`DevDataInitializer` 写演示密码 | V1_1_004 mock + 006 权限 |
 | CI / test | H2 或 PG test profile | `src/test/resources/sql/*` |
-| **试点 prod** | 空库或 staging 快照 → migrate 至 latest | 保留 004/006；**禁用** dev 密码 bootstrap |
+| **试点 prod** | 空库或 staging 快照 → migrate 至 latest | 保留 004/006；**禁用** dev 密码 bootstrap（EA-033） |
 
-> **风险项：** `V1_1_004__seed_mock_data.sql` 含演示企业与订单。试点若需「空业务库 + 仅 IAM」，需 EA-033 拆分为 `seed_iam` / `seed_demo`（本阶段仅文档标记，不改动 migration）。
+> **V1_1_004 决策（EA-033）：** 试点 **保留** 全量演示 seed — 见 [`V1_1_004_DECISION.md`](./V1_1_004_DECISION.md)。
+
+> **风险项（已缓解）：** `DevDataInitializer` — EA-033 已 `@Profile("!prod")` + `scf.dev.password-bootstrap=false`。
 
 ## 4. 上线前检查（DBA / 运维）
 
@@ -66,6 +68,6 @@ flyway -url=jdbc:postgresql://host:5432/scf -user=scf -password=*** \
 
 ## 7. Codex / 下一轮
 
-- 确认试点 prod 是否接受 V1_1_004 演示数据
-- 评估 `DevDataInitializer` 加 `@Profile("!prod")` 或 `SCF_DEV_PASSWORD_BOOTSTRAP` 开关
+- 确认试点 prod 是否接受 V1_1_004 演示数据 → **已决策保留**，见 `V1_1_004_DECISION.md`
+- ~~评估 `DevDataInitializer` 加 `@Profile("!prod")`~~ → **EA-033 已落地**
 - 记录每次上线的 `flyway_schema_history` 最高 version 到发布记录
