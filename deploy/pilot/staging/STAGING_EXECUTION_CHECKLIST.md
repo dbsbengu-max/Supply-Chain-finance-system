@@ -1,13 +1,13 @@
-# Staging 执行清单（EA-034）
+# Staging 执行清单（EA-035）
 
-在 **staging 跳板机** 上按序执行。一键脚本见 [`../scripts/run-staging-validation.ps1`](../scripts/run-staging-validation.ps1)。
+在 **staging 跳板机** 上按序执行。**首选：** [`EA-035_EXECUTION_RUNBOOK.md`](EA-035_EXECUTION_RUNBOOK.md) + `run-ea035-signoff.ps1`。
 
 ## 0. 前置条件
 
 | # | 项 | 确认 |
 |---|---|---|
 | 0.1 | 代码已 merge 至 `master`（或部署与 PR 一致的 tag） | [ ] |
-| 0.2 | staging PostgreSQL 14+ 可连，`schema scf` 已 migrate 至 V1_1_026 | [ ] |
+| 0.2 | staging PostgreSQL 14+ 已 migrate 至 **V1_1_027** | [ ] |
 | 0.3 | staging backend 以 `SPRING_PROFILES_ACTIVE=prod` 运行 | [ ] |
 | 0.4 | 跳板机已装 **psql**、**Node 18+**、**PowerShell 7+** | [ ] |
 | 0.5 | 已从 [`.env.staging.example`](../.env.staging.example) 复制为 `deploy/pilot/.env` | [ ] |
@@ -27,37 +27,20 @@ notepad .env
 - [ ] JWT / 银行 token **不是** dev 默认值
 - [ ] `SCF_API_HEALTH_URL` 指向 staging backend 健康检查
 
-## 2. 一键自动化验证（约 10–20 min）
-
-**终端 1 — backend**（若尚未运行）：
-
-```powershell
-cd <repo>\backend\scf-server
-$env:SPRING_PROFILES_ACTIVE="prod"
-# 注入 SCF_DB_* / SCF_JWT_SECRET 等（与 .env 一致）
-mvn spring-boot:run
-```
-
-**终端 2 — frontend**（smoke 需要）：
-
-```powershell
-cd <repo>\frontend\scf-web
-npm ci
-npm run dev
-```
-
-**终端 3 — 验证脚本**：
+## 2. 一键 EA-035 签核（约 35–40 min）
 
 ```powershell
 cd <repo>\deploy\pilot
-.\scripts\run-staging-validation.ps1
+.\scripts\run-ea035-signoff.ps1 -WatchMinutes 30 -WatchIntervalMinutes 5
 ```
 
 期望：
 
-- [ ] `seed-verify-*.log` 写入 `evidence/staging/`
-- [ ] `staging-validation-*.summary.md` 写入 `evidence/staging/`
-- [ ] 终端输出 `>>> STAGING VALIDATION: PASS <<<`
+- [ ] `seed-verify-*.log`、`staging-gate-*.summary.md`、`alerts-watch-*.log` 写入 `evidence/staging/`
+- [ ] 终端 `>>> STAGING GATE: PASS <<<`
+- [ ] `docs/EA-035_Staging真实验证与发布签核报告_*.md` 已更新
+
+（可选完整验证含 smoke：[`run-staging-validation.ps1`](../scripts/run-staging-validation.ps1)）
 
 ## 3. 手工补项（脚本不覆盖）
 
@@ -71,8 +54,8 @@ cd <repo>\deploy\pilot
 ## 4. 证据归档
 
 1. 将 `evidence/staging/seed-verify-*.log` 与 `staging-validation-*.summary.md` 提交到 repo **或** 附到发布 ticket。
-2. 复制 [`../evidence/staging/ACCEPTANCE_TEMPLATE.md`](../evidence/staging/ACCEPTANCE_TEMPLATE.md) 为 `ACCEPTANCE_staging_YYYYMMDD.md`，填写签字。
-3. 主验收文档：[`docs/EA-034_Staging执行包与验收_20260531.md`](../../docs/EA-034_Staging执行包与验收_20260531.md)
+2. 填写 [`GO_NO_GO_CHECKLIST.md`](../evidence/staging/GO_NO_GO_CHECKLIST.md) 与 `ACCEPTANCE_staging_YYYYMMDD.md`。
+3. 主验收文档：[`docs/EA-035_Staging真实验证与发布签核报告_20260531.md`](../../docs/EA-035_Staging真实验证与发布签核报告_20260531.md)
 
 ## 5. 失败处理
 
