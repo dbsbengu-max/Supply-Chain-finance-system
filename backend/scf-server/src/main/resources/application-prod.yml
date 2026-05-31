@@ -28,4 +28,3 @@ logging:
   level:
     root: ${SCF_LOG_LEVEL_ROOT:INFO}
     com.scf: ${SCF_LOG_LEVEL_COM_SCF:INFO}
-  config: ${SCF_LOGBACK_CONFIG:classpath:logback-spring.xml}

@@ -26,10 +26,11 @@ JOIN sys_role r ON r.id = ui.role_id
 WHERE u.login_name IN ('platform_admin', 'funding_user', 'member_user', 'warehouse_user');
 
 \echo '=== 5. platform_admin critical permissions (pilot closure) ==='
-SELECT rp.permission_code
+SELECT p.permission_code
 FROM sys_role_permission rp
+JOIN sys_permission p ON p.id = rp.permission_id
 WHERE rp.role_id = 'ROLE_PLATFORM_ADMIN'
-  AND rp.permission_code IN (
+  AND p.permission_code IN (
     'SAGA_OPS_VIEW', 'SAGA_OPS_MANAGE',
     'FINANCE_VIEW', 'FINANCE_CREATE', 'FINANCE_APPROVE', 'FINANCE_DISBURSE',
     'CLEARING_VIEW', 'CLEARING_EXECUTE',
@@ -39,12 +40,13 @@ WHERE rp.role_id = 'ROLE_PLATFORM_ADMIN'
     'VOUCHER_VIEW', 'ACCOUNT_FLOW_VIEW',
     'RISK_ALERT_VIEW', 'INBOX_VIEW'
   )
-ORDER BY rp.permission_code;
+ORDER BY p.permission_code;
 
 \echo '=== 6. Permission count by role ==='
-SELECT r.role_code, COUNT(rp.permission_code) AS perm_count
+SELECT r.role_code, COUNT(p.id) AS perm_count
 FROM sys_role r
 LEFT JOIN sys_role_permission rp ON rp.role_id = r.id
+LEFT JOIN sys_permission p ON p.id = rp.permission_id
 WHERE r.id IN ('ROLE_PLATFORM_ADMIN', 'ROLE_FUNDING', 'ROLE_MEMBER', 'ROLE_WAREHOUSE')
 GROUP BY r.role_code
 ORDER BY r.role_code;
@@ -54,5 +56,23 @@ SELECT version, description, success, installed_on
 FROM flyway_schema_history
 ORDER BY installed_rank DESC
 LIMIT 5;
+
+\echo '=== 8. Seed manifest (EA-034, if V1_1_027 applied) ==='
+DO $$
+DECLARE r record;
+BEGIN
+  IF to_regclass('scf.sys_seed_manifest') IS NULL THEN
+    RAISE NOTICE 'SKIP: sys_seed_manifest not migrated — deploy backend with V1_1_027';
+    RETURN;
+  END IF;
+  FOR r IN
+    SELECT id, seed_profile, source_file, applied_at
+    FROM scf.sys_seed_manifest
+    ORDER BY applied_at DESC
+  LOOP
+    RAISE NOTICE 'manifest row: id=% profile=% file=% at=%',
+      r.id, r.seed_profile, r.source_file, r.applied_at;
+  END LOOP;
+END $$;
 
 \echo '=== DONE ==='

@@ -1,28 +1,37 @@
-# Staging seed verification evidence
+# Staging seed & validation evidence
 
-Archive outputs from `verify-pilot-seed.ps1 -ArchiveDir` for audit trail.
+| 产物 | 来源 |
+|---|---|
+| `seed-verify-*.log` | `verify-pilot-seed.ps1 -ArchiveDir` |
+| `staging-validation-*.summary.md` | `run-staging-validation.ps1` |
+| `ACCEPTANCE_staging_*.md` | 复制 `ACCEPTANCE_TEMPLATE.md` 填写 |
 
-## Run on staging PostgreSQL
+## 一键执行（推荐）
 
 ```powershell
 cd deploy\pilot
-# Copy .env.example → .env and set SCF_DB_* to **staging** credentials
-.\scripts\verify-pilot-seed.ps1 -ArchiveDir .\evidence\staging
+copy .env.staging.example .env   # 首次：编辑 staging 连接信息
+.\scripts\run-staging-validation.ps1
 ```
 
-Commit the generated `seed-verify-YYYYMMDD-HHmmss.log` after staging sign-off, or attach to release ticket.
-
-## Local dev (optional)
+仅 DB + 告警 + health（跳过 build/smoke）：
 
 ```powershell
-# docker compose up -d postgres  (when Docker available)
-$env:SCF_DB_PASSWORD = "scf_dev_pass"
-.\scripts\verify-pilot-seed.ps1 -ArchiveDir .\evidence\staging
+.\scripts\run-staging-validation.ps1 -SkipBuild -SkipSmoke
 ```
 
-## Status
+## 分步执行
 
-| Environment | Last run | Log file |
-|---|---|---|
-| staging | _pending — no psql/staging DB in CI agent_ | — |
-| local dev | _optional_ | — |
+```powershell
+.\scripts\verify-pilot-seed.ps1 -ArchiveDir .\evidence\staging
+.\monitoring\check-pilot-alerts.ps1 -BackendUrl $env:SCF_API_HEALTH_URL
+.\scripts\pre-flight.ps1 -BackendUrl $env:SCF_API_HEALTH_URL
+```
+
+完整清单见 [`staging/STAGING_EXECUTION_CHECKLIST.md`](../staging/STAGING_EXECUTION_CHECKLIST.md)。
+
+## 归档状态
+
+| Environment | Last run | Summary | Seed log | Acceptance |
+|---|---|---|---|---|
+| staging | _pending_ | — | — | — |

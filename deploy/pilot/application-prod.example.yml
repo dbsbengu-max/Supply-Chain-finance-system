@@ -73,5 +73,5 @@ logging:
   level:
     root: ${SCF_LOG_LEVEL_ROOT:INFO}
     com.scf: ${SCF_LOG_LEVEL_COM_SCF:INFO}
-  # External mount: file:/etc/scf/logback-spring.xml — see logging/LOGBACK_MOUNT_EVAL.md
-  config: ${SCF_LOGBACK_CONFIG:classpath:logback-spring.xml}
+  # External logback mount is optional. Use Spring Boot env:
+  # LOGGING_CONFIG=file:/etc/scf/logback-spring.xml

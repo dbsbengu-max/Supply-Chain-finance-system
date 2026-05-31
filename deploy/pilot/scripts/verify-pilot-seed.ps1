@@ -1,5 +1,5 @@
 # EA-032/033 Pilot seed verification (PowerShell)
-# Requires: psql in PATH, deploy/pilot/.env or SCF_DB_* env vars
+# Requires psql or docker postgres — see _psql.ps1
 # Usage: .\verify-pilot-seed.ps1 [-ArchiveDir deploy/pilot/evidence/staging]
 
 param(
@@ -8,6 +8,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $ScriptDir "_psql.ps1")
 $Root = Resolve-Path (Join-Path $ScriptDir "..")
 
 function Load-DotEnv {
@@ -59,20 +60,22 @@ try {
             "Target: ${user}@${dbHost}:${port}/${db}",
             ""
         ) | Set-Content -Path $archivePath -Encoding UTF8
-        psql -h $dbHost -p $port -U $user -d $db -f $sqlFile 2>&1 | Tee-Object -FilePath $archivePath -Append
+        $code = Invoke-ScfPsql -FilePath $sqlFile -PilotRoot $Root -LogAppendPath $archivePath
+        if ($code -ne 0) { throw "psql exited $code" }
     } else {
-        psql -h $dbHost -p $port -U $user -d $db -f $sqlFile
+        $code = Invoke-ScfPsql -FilePath $sqlFile -PilotRoot $Root
+        if ($code -ne 0) { throw "psql exited $code" }
     }
-    if ($LASTEXITCODE -ne 0) { throw "psql exited $LASTEXITCODE" }
 } catch {
     Write-Host "FAIL  Seed verification: $_" -ForegroundColor Red
     exit 1
 }
 
 # Quick gate: mock_hash on platform_admin is WARN for prod
-$mockCheck = psql -h $dbHost -p $port -U $user -d $db -t -A -c `
-    "SET search_path TO scf; SELECT COUNT(*) FROM sys_user WHERE login_name='platform_admin' AND password_hash='mock_hash';"
-if ($mockCheck.Trim() -eq "1") {
+$mockCheck = (Invoke-ScfPsqlQuery -Query `
+    "SET search_path TO scf; SELECT COUNT(*) FROM sys_user WHERE login_name='platform_admin' AND password_hash='mock_hash';" `
+    -PilotRoot $Root).Trim()
+if ($mockCheck -eq "1") {
     Write-Host "WARN  platform_admin still has mock_hash — reset password before pilot go-live (prod disables DevDataInitializer)" -ForegroundColor Yellow
     if ($archivePath) { "WARN platform_admin mock_hash=1" | Add-Content -Path $archivePath }
 }

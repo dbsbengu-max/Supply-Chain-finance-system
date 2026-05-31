@@ -19,7 +19,7 @@ WHERE event_status = 'FAILED'
 
 \echo '=== A-04 Compensation MANUAL_REQUIRED ==='
 SELECT compensation_status, COUNT(*) AS cnt,
-       MAX(updated_at) AS last_updated
+       MAX(created_at) AS last_created
 FROM biz_compensation_task
 WHERE compensation_status = 'MANUAL_REQUIRED'
 GROUP BY compensation_status;

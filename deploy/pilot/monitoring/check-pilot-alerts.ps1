@@ -21,11 +21,17 @@ if (-not $SkipSaga) {
         & (Join-Path $ScriptDir "check-saga-alerts.ps1")
     }
     if ($LASTEXITCODE -ne 0) { $failed = $true }
+} else {
+    Write-Host "SKIP  Saga alerts check (A-03, A-04)" -ForegroundColor Yellow
 }
 
 if ($failed) {
     Write-Host "FAIL  Pilot alerts check" -ForegroundColor Red
     exit 1
 }
-Write-Host "PASS  Pilot alerts check (A-01, A-03, A-04)" -ForegroundColor Green
+if ($SkipSaga) {
+    Write-Host "PASS  Pilot alerts check (A-01; A-03/A-04 skipped)" -ForegroundColor Green
+} else {
+    Write-Host "PASS  Pilot alerts check (A-01, A-03, A-04)" -ForegroundColor Green
+}
 exit 0

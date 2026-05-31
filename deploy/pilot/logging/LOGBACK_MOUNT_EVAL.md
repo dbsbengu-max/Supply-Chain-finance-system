@@ -10,21 +10,16 @@
 |---|---|---|
 | 改日志级别/路径 | 需重新发版 | 改文件 + 滚动重启 |
 | 密钥/路径泄露风险 | 低 | 低（路径在宿主机） |
-| K8s / VM | ConfigMap 需 rebuild | `SCF_LOGBACK_CONFIG=file:/etc/scf/logback-spring.xml` |
+| K8s / VM | ConfigMap 需 rebuild | `LOGGING_CONFIG=file:/etc/scf/logback-spring.xml` |
 | 本地 dev | 默认 Spring 控制台即可 | 可不设置 |
 
 **试点 prod：外部挂载 logback，不强制合入主工程 `src/main/resources`。**
 
 ## 落地方式
 
-### 1. 环境变量（已在 `application-prod.yml`）
+### 1. 环境变量
 
-```yaml
-logging:
-  config: ${SCF_LOGBACK_CONFIG:classpath:logback-spring.xml}
-```
-
-- 未设置 `SCF_LOGBACK_CONFIG` → Spring Boot 默认 logback（当前 dev 行为）
+- 未设置 `LOGGING_CONFIG` → Spring Boot 默认控制台日志（当前 dev 行为）
 - prod 设置 → `file:/etc/scf/logback-spring.xml`
 
 ### 2. VM 部署
@@ -33,7 +28,7 @@ logging:
 sudo mkdir -p /etc/scf /var/log/scf
 sudo cp deploy/pilot/logging/logback-spring.example.xml /etc/scf/logback-spring.xml
 # 编辑 LOG_PATH → /var/log/scf
-export SCF_LOGBACK_CONFIG=file:/etc/scf/logback-spring.xml
+export LOGGING_CONFIG=file:/etc/scf/logback-spring.xml
 export SCF_LOG_PATH=/var/log/scf
 ```
 
@@ -49,7 +44,7 @@ data:
     # paste from logback-spring.example.xml, adjust paths
 ---
 env:
-  - name: SCF_LOGBACK_CONFIG
+  - name: LOGGING_CONFIG
     value: file:/etc/scf/logback-spring.xml
 volumeMounts:
   - name: logback
@@ -70,7 +65,7 @@ volumes:
 
 ## 检查清单
 
-- [ ] prod 设置 `SCF_LOGBACK_CONFIG` 或确认接受默认控制台日志（仅容器 stdout 采集时可行）
+- [ ] prod 设置 `LOGGING_CONFIG` 或确认接受默认控制台日志（仅容器 stdout 采集时可行）
 - [ ] 日志目录磁盘监控（告警 A-06）
 - [ ] 日志不含 JWT / 密码 / 银行 token 明文
 
