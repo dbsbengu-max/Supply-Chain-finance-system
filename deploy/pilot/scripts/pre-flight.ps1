@@ -2,13 +2,15 @@
 # Usage: .\deploy\pilot\scripts\pre-flight.ps1 [-SkipBuild] [-SkipSmoke]
 
 param(
+    [string]$BackendUrl,
     [switch]$SkipBuild,
+    [switch]$SkipSeed,
     [switch]$SkipSmoke
 )
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..\..")
-$BackendUrl = $env:SCF_API_HEALTH_URL
+if (-not $BackendUrl) { $BackendUrl = $env:SCF_API_HEALTH_URL }
 if (-not $BackendUrl) { $BackendUrl = "http://localhost:8080/api/v1/actuator/health" }
 
 $results = @()
@@ -31,12 +33,16 @@ try {
 }
 
 # 2. Seed verification
-$seedScript = Join-Path $PSScriptRoot "verify-pilot-seed.ps1"
-if (Test-Path $seedScript) {
-    & $seedScript
-    Record "Seed verification" ($LASTEXITCODE -eq 0)
+if (-not $SkipSeed) {
+    $seedScript = Join-Path $PSScriptRoot "verify-pilot-seed.ps1"
+    if (Test-Path $seedScript) {
+        & $seedScript
+        Record "Seed verification" ($LASTEXITCODE -eq 0)
+    } else {
+        Record "Seed verification" $false "script missing"
+    }
 } else {
-    Record "Seed verification" $false "script missing"
+    Record "Seed verification" $true "skipped"
 }
 
 # 3. Frontend build

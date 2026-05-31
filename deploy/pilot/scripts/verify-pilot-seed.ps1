@@ -17,7 +17,7 @@ function Load-DotEnv {
 
 Load-DotEnv (Join-Path $Root ".env")
 
-$host = $env:SCF_DB_HOST; if (-not $host) { $host = "localhost" }
+$dbHost = $env:SCF_DB_HOST; if (-not $dbHost) { $dbHost = "localhost" }
 $port = $env:SCF_DB_PORT; if (-not $port) { $port = "5432" }
 $db   = $env:SCF_DB_NAME; if (-not $db)   { $db = "scf" }
 $user = $env:SCF_DB_USER; if (-not $user) { $user = "scf" }
@@ -32,10 +32,10 @@ $env:PGPASSWORD = $pass
 $sqlFile = Join-Path $ScriptDir "verify-pilot-seed.sql"
 
 Write-Host "=== EA-032 Seed Verification ===" -ForegroundColor Cyan
-Write-Host "Target: ${user}@${host}:${port}/${db}"
+Write-Host "Target: ${user}@${dbHost}:${port}/${db}"
 
 try {
-    psql -h $host -p $port -U $user -d $db -f $sqlFile
+    psql -h $dbHost -p $port -U $user -d $db -f $sqlFile
     if ($LASTEXITCODE -ne 0) { throw "psql exited $LASTEXITCODE" }
 } catch {
     Write-Host "FAIL  Seed verification: $_" -ForegroundColor Red
@@ -43,7 +43,7 @@ try {
 }
 
 # Quick gate: mock_hash on platform_admin is WARN for prod
-$mockCheck = psql -h $host -p $port -U $user -d $db -t -A -c `
+$mockCheck = psql -h $dbHost -p $port -U $user -d $db -t -A -c `
     "SET search_path TO scf; SELECT COUNT(*) FROM sys_user WHERE login_name='platform_admin' AND password_hash='mock_hash';"
 if ($mockCheck.Trim() -eq "1") {
     Write-Host "WARN  platform_admin still has mock_hash — enable password bootstrap only in dev, or set password before pilot go-live" -ForegroundColor Yellow
