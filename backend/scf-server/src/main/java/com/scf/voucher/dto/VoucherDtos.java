@@ -1,5 +1,6 @@
 package com.scf.voucher.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.scf.voucher.entity.DvVoucher;
 import com.scf.voucher.entity.DvVoucherFlow;
@@ -36,6 +37,60 @@ public final class VoucherDtos {
 
     public record VoucherRedeemRequest(
             @JsonProperty("remark") String remark) {}
+
+    public record VoucherRedeemExecuteRequest(
+            @JsonProperty("payer_account_id") @NotBlank String payerAccountId,
+            @JsonProperty("receiver_account_id") @NotBlank String receiverAccountId,
+            @JsonProperty("remark") String remark) {}
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record VoucherRedeemExecuteView(
+            @JsonProperty("voucher_id") String voucherId,
+            @JsonProperty("voucher_status") String voucherStatus,
+            @JsonProperty("redeem_amount") String redeemAmount,
+            String currency,
+            @JsonProperty("payer_account_id") String payerAccountId,
+            @JsonProperty("receiver_account_id") String receiverAccountId,
+            @JsonProperty("executed_at") Instant executedAt,
+            @JsonProperty("idempotent_replay") Boolean idempotentReplay) {
+
+        public VoucherRedeemExecuteView withIdempotentReplay(boolean replay) {
+            return new VoucherRedeemExecuteView(
+                    voucherId,
+                    voucherStatus,
+                    redeemAmount,
+                    currency,
+                    payerAccountId,
+                    receiverAccountId,
+                    executedAt,
+                    replay);
+        }
+    }
+
+    public record VoucherRelatedFinanceView(
+            String id,
+            @JsonProperty("finance_no") String financeNo,
+            @JsonProperty("finance_status") String financeStatus,
+            @JsonProperty("product_type") String productType,
+            @JsonProperty("disbursed_amount") String disbursedAmount,
+            String currency) {}
+
+    public record VoucherClearingRecordView(
+            @JsonProperty("repayment_id") String repaymentId,
+            @JsonProperty("finance_id") String financeId,
+            @JsonProperty("repayment_amount") String repaymentAmount,
+            @JsonProperty("principal_amount") String principalAmount,
+            @JsonProperty("interest_amount") String interestAmount,
+            @JsonProperty("clearing_status") String clearingStatus,
+            @JsonProperty("created_at") Instant createdAt) {}
+
+    public record VoucherRedeemRecordView(
+            @JsonProperty("flow_type") String flowType,
+            String amount,
+            @JsonProperty("from_holder_id") String fromHolderId,
+            @JsonProperty("to_holder_id") String toHolderId,
+            @JsonProperty("operated_by") String operatedBy,
+            @JsonProperty("operated_at") Instant operatedAt) {}
 
     public record VoucherView(
             String id,
@@ -116,9 +171,17 @@ public final class VoucherDtos {
             @JsonProperty("version_no") Integer versionNo,
             VoucherView voucher,
             List<VoucherFlowView> flows,
-            @JsonProperty("finance_summary") VoucherFinanceSummaryView financeSummary) {
+            @JsonProperty("finance_summary") VoucherFinanceSummaryView financeSummary,
+            @JsonProperty("related_finances") List<VoucherRelatedFinanceView> relatedFinances,
+            @JsonProperty("clearing_records") List<VoucherClearingRecordView> clearingRecords,
+            @JsonProperty("redeem_records") List<VoucherRedeemRecordView> redeemRecords) {
         public static VoucherDetailView from(
-                VoucherView voucher, List<VoucherFlowView> flows, VoucherFinanceSummaryView financeSummary) {
+                VoucherView voucher,
+                List<VoucherFlowView> flows,
+                VoucherFinanceSummaryView financeSummary,
+                List<VoucherRelatedFinanceView> relatedFinances,
+                List<VoucherClearingRecordView> clearingRecords,
+                List<VoucherRedeemRecordView> redeemRecords) {
             return new VoucherDetailView(
                     voucher.id(),
                     voucher.voucherNo(),
@@ -136,7 +199,10 @@ public final class VoucherDtos {
                     voucher.versionNo(),
                     voucher,
                     flows,
-                    financeSummary);
+                    financeSummary,
+                    relatedFinances,
+                    clearingRecords,
+                    redeemRecords);
         }
     }
 

@@ -37,10 +37,41 @@ export interface VoucherFinanceSummary {
   pending_redeem_amount: string
 }
 
+export interface VoucherRelatedFinance {
+  id: string
+  finance_no: string
+  finance_status: string
+  product_type: string
+  disbursed_amount: string
+  currency: string
+}
+
+export interface VoucherClearingRecord {
+  repayment_id: string
+  finance_id: string
+  repayment_amount: string
+  principal_amount?: string
+  interest_amount?: string
+  clearing_status: string
+  created_at: string
+}
+
+export interface VoucherRedeemRecord {
+  flow_type: string
+  amount: string
+  from_holder_id?: string
+  to_holder_id?: string
+  operated_by: string
+  operated_at: string
+}
+
 export interface VoucherDetail {
   voucher: Voucher
   flows: VoucherFlow[]
   finance_summary?: VoucherFinanceSummary
+  related_finances?: VoucherRelatedFinance[]
+  clearing_records?: VoucherClearingRecord[]
+  redeem_records?: VoucherRedeemRecord[]
 }
 
 export async function listVouchers(params?: { page_no?: number; page_size?: number; status?: string }) {
@@ -83,6 +114,20 @@ export async function splitVoucher(id: string, body: { amount: string; to_holder
 
 export async function redeemVoucher(id: string, body: { remark?: string }) {
   const { data } = await http.post(`/dv/vouchers/${id}/redeem-apply`, body)
+  return data
+}
+
+export async function redeemExecuteVoucher(
+  id: string,
+  body: { payer_account_id: string; receiver_account_id: string; remark?: string },
+  headers?: { idempotencyKey?: string; secondaryAuthToken?: string }
+) {
+  const { data } = await http.post(`/dv/vouchers/${id}/redeem-execute`, body, {
+    headers: {
+      ...(headers?.idempotencyKey ? { 'X-Idempotency-Key': headers.idempotencyKey } : {}),
+      ...(headers?.secondaryAuthToken ? { 'X-Secondary-Auth-Token': headers.secondaryAuthToken } : {})
+    }
+  })
   return data
 }
 

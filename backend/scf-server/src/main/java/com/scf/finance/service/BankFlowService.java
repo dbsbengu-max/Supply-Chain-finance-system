@@ -13,6 +13,7 @@ import java.time.Instant;
 public class BankFlowService {
 
     public static final String SOURCE_DISBURSEMENT = "DISBURSEMENT";
+    public static final String SOURCE_VOUCHER_REDEEM = "VOUCHER_REDEEM";
     public static final String MATCH_MATCHED = "MATCHED";
 
     private final AcctBankFlowRepository repository;
@@ -54,6 +55,41 @@ public class BankFlowService {
                 counterpartyAccount,
                 SOURCE_DISBURSEMENT,
                 disbursementId);
+    }
+
+    @Transactional
+    public void recordRedeemPair(
+            String voucherId,
+            String payerAccountId,
+            String receiverAccountId,
+            String externalFlowNo,
+            BigDecimal amount,
+            String currency,
+            Instant flowTime,
+            String counterpartyName,
+            String counterpartyAccount) {
+        recordFlow(
+                payerAccountId,
+                externalFlowNo + "-OUT",
+                "OUT",
+                amount,
+                currency,
+                flowTime,
+                counterpartyName,
+                counterpartyAccount,
+                SOURCE_VOUCHER_REDEEM,
+                voucherId);
+        recordFlow(
+                receiverAccountId,
+                externalFlowNo + "-IN",
+                "IN",
+                amount,
+                currency,
+                flowTime,
+                counterpartyName,
+                counterpartyAccount,
+                SOURCE_VOUCHER_REDEEM,
+                voucherId);
     }
 
     private void recordFlow(

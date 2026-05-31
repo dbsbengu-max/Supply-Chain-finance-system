@@ -56,4 +56,8 @@ public interface DvVoucherRepository extends JpaRepository<DvVoucher, String> {
             @Param("id") String id,
             @Param("operatorId") String operatorId,
             @Param("projectId") String projectId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT v FROM DvVoucher v WHERE v.id = :id")
+    Optional<DvVoucher> findByIdForUpdate(@Param("id") String id);
 }

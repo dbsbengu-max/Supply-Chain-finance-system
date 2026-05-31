@@ -77,4 +77,7 @@ public interface FnFinanceApplicationRepository extends JpaRepository<FnFinanceA
             @Param("fundingPartyId") String fundingPartyId,
             @Param("customerId") String customerId,
             Pageable pageable);
+
+    List<FnFinanceApplication> findByOperatorIdAndProjectIdAndSourceTypeAndSourceIdAndDeletedFlagOrderByCreatedAtDesc(
+            String operatorId, String projectId, String sourceType, String sourceId, short deletedFlag);
 }

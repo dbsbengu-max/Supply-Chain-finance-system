@@ -6,7 +6,10 @@
         <el-select v-model="status" clearable placeholder="全部状态" style="width: 150px" @change="load">
           <el-option label="草稿" value="DRAFT" />
           <el-option label="已签发" value="ACCEPTED" />
-          <el-option label="兑付申请" value="REDEEM_APPLIED" />
+          <el-option label="兑付待审" value="REDEEM_PENDING" />
+          <el-option label="兑付已批" value="REDEEM_APPROVED" />
+          <el-option label="已兑付" value="REDEEMED" />
+          <el-option label="已驳回" value="REJECTED" />
           <el-option label="已作废" value="CANCELLED" />
         </el-select>
         <el-button v-if="canCreate" type="primary" @click="showCreate = true">新建凭证</el-button>

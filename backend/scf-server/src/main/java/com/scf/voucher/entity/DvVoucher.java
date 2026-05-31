@@ -63,6 +63,15 @@ public class DvVoucher {
     @Column(name = "version_no", nullable = false)
     private int versionNo = 1;
 
+    @Column(name = "bpm_instance_id")
+    private String bpmInstanceId;
+
+    @Column(name = "redeem_restore_status")
+    private String redeemRestoreStatus;
+
+    @Column(name = "redeem_amount")
+    private BigDecimal redeemAmount;
+
     public String getId() {
         return id;
     }
@@ -197,5 +206,29 @@ public class DvVoucher {
 
     public void setVersionNo(int versionNo) {
         this.versionNo = versionNo;
+    }
+
+    public String getBpmInstanceId() {
+        return bpmInstanceId;
+    }
+
+    public void setBpmInstanceId(String bpmInstanceId) {
+        this.bpmInstanceId = bpmInstanceId;
+    }
+
+    public String getRedeemRestoreStatus() {
+        return redeemRestoreStatus;
+    }
+
+    public void setRedeemRestoreStatus(String redeemRestoreStatus) {
+        this.redeemRestoreStatus = redeemRestoreStatus;
+    }
+
+    public BigDecimal getRedeemAmount() {
+        return redeemAmount;
+    }
+
+    public void setRedeemAmount(BigDecimal redeemAmount) {
+        this.redeemAmount = redeemAmount;
     }
 }

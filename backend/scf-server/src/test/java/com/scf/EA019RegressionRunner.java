@@ -24,6 +24,7 @@ public class EA019RegressionRunner {
                         DiscoverySelectors.selectClass("com.scf.audit.AuditCenterIntegrationTest"),
                         DiscoverySelectors.selectClass("com.scf.voucher.VoucherIntegrationTest"),
                         DiscoverySelectors.selectClass("com.scf.voucher.VoucherRepaymentReleaseIntegrationTest"),
+                        DiscoverySelectors.selectClass("com.scf.voucher.VoucherRedeemIntegrationTest"),
                         DiscoverySelectors.selectClass("com.scf.security.PermissionPenetrationTest"))
                 .build();
         Launcher launcher = LauncherFactory.create();

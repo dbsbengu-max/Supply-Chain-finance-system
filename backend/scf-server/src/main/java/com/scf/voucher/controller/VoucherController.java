@@ -4,6 +4,8 @@ import com.scf.common.dto.ApiResponse;
 import com.scf.common.dto.PageResponse;
 import com.scf.voucher.dto.VoucherDtos.VoucherCreateRequest;
 import com.scf.voucher.dto.VoucherDtos.VoucherDetailView;
+import com.scf.voucher.dto.VoucherDtos.VoucherRedeemExecuteRequest;
+import com.scf.voucher.dto.VoucherDtos.VoucherRedeemExecuteView;
 import com.scf.voucher.dto.VoucherDtos.VoucherRedeemRequest;
 import com.scf.voucher.dto.VoucherDtos.VoucherSplitRequest;
 import com.scf.voucher.dto.VoucherDtos.VoucherTransferRequest;
@@ -78,6 +80,20 @@ public class VoucherController {
             HttpServletRequest request) {
         VoucherRedeemRequest effectiveBody = body == null ? new VoucherRedeemRequest(null) : body;
         return ApiResponse.ok(voucherService.redeemApply(id, effectiveBody), request.getHeader("X-Request-Id"));
+    }
+
+    @PostMapping("/{id}/redeem-execute")
+    public ApiResponse<VoucherRedeemExecuteView> redeemExecute(
+            @PathVariable String id,
+            @Valid @RequestBody VoucherRedeemExecuteRequest body,
+            HttpServletRequest request) {
+        return ApiResponse.ok(
+                voucherService.redeemExecute(
+                        id,
+                        body,
+                        request.getHeader("X-Idempotency-Key"),
+                        request.getHeader("X-Secondary-Auth-Token")),
+                request.getHeader("X-Request-Id"));
     }
 
     @PostMapping("/{id}/cancel")

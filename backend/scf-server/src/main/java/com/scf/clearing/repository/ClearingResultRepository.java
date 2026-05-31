@@ -6,8 +6,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 public interface ClearingResultRepository extends JpaRepository<ClearingResult, String> {
+
+    Optional<ClearingResult> findByRepaymentId(String repaymentId);
 
     @Query("""
             SELECT COALESCE(SUM(cr.principalAmount), 0) FROM ClearingResult cr, FnRepayment r

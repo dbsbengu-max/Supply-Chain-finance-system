@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface FnRepaymentRepository extends JpaRepository<FnRepayment, String> {
@@ -19,4 +21,6 @@ public interface FnRepaymentRepository extends JpaRepository<FnRepayment, String
             WHERE r.financeId = :financeId AND r.repaymentStatus = 'EXECUTED'
             """)
     BigDecimal sumExecutedAmountByFinanceId(@Param("financeId") String financeId);
+
+    List<FnRepayment> findByFinanceIdInOrderByCreatedAtDesc(Collection<String> financeIds);
 }

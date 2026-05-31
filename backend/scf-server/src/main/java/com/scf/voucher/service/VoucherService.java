@@ -2,23 +2,41 @@ package com.scf.voucher.service;
 
 import com.scf.audit.service.AuditLogService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.scf.bpm.entity.BpmProcessInstance;
+import com.scf.bpm.service.BpmProcessService;
+import com.scf.clearing.entity.ClearingResult;
+import com.scf.clearing.entity.FnRepayment;
+import com.scf.clearing.repository.ClearingResultRepository;
+import com.scf.clearing.repository.FnRepaymentRepository;
 import com.scf.common.dto.PageResponse;
 import com.scf.common.exception.BusinessException;
 import com.scf.common.security.DataScopeHelper;
+import com.scf.common.security.SecondaryAuthVerifier;
 import com.scf.common.security.SecurityUtils;
 import com.scf.common.security.TenantContext;
 import com.scf.common.security.UserContext;
 import com.scf.common.util.IdGenerator;
+import com.scf.finance.entity.AcctVirtualAccount;
 import com.scf.finance.entity.FnFinanceApplication;
+import com.scf.finance.repository.AcctVirtualAccountRepository;
 import com.scf.finance.repository.FnFinanceApplicationRepository;
+import com.scf.finance.service.BankFlowService;
+import com.scf.idempotency.dto.IdempotentExecutionResult;
+import com.scf.idempotency.service.IdempotencyService;
 import com.scf.saga.entity.BizEventOutbox;
+import com.scf.voucher.callback.VoucherRedeemBpmCallback;
 import com.scf.voucher.dto.VoucherDtos.FinanceDisbursedPayload;
 import com.scf.voucher.dto.VoucherDtos.RepaymentSettledPayload;
+import com.scf.voucher.dto.VoucherDtos.VoucherClearingRecordView;
 import com.scf.voucher.dto.VoucherDtos.VoucherCreateRequest;
 import com.scf.voucher.dto.VoucherDtos.VoucherDetailView;
 import com.scf.voucher.dto.VoucherDtos.VoucherFinanceSummaryView;
 import com.scf.voucher.dto.VoucherDtos.VoucherFlowView;
+import com.scf.voucher.dto.VoucherDtos.VoucherRedeemExecuteRequest;
+import com.scf.voucher.dto.VoucherDtos.VoucherRedeemExecuteView;
+import com.scf.voucher.dto.VoucherDtos.VoucherRedeemRecordView;
 import com.scf.voucher.dto.VoucherDtos.VoucherRedeemRequest;
+import com.scf.voucher.dto.VoucherDtos.VoucherRelatedFinanceView;
 import com.scf.voucher.dto.VoucherDtos.VoucherSplitRequest;
 import com.scf.voucher.dto.VoucherDtos.VoucherTransferRequest;
 import com.scf.voucher.dto.VoucherDtos.VoucherView;
@@ -34,34 +52,63 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class VoucherService {
 
+    public static final String REDEEM_PROCESS_CODE = "VOUCHER_REDEEM_APPROVAL";
+    public static final String REDEEM_BUSINESS_TYPE = VoucherRedeemBpmCallback.BUSINESS_TYPE;
+    private static final String REDEEM_APPROVER_USER_ID = "U002";
+    private static final Set<String> REDEEM_RECORD_FLOW_TYPES = Set.of(
+            "REDEEM_APPLY", "REDEEM_APPROVE", "REDEEM_REJECT", "REDEEM_PAY");
+
     private final DvVoucherRepository voucherRepository;
     private final DvVoucherFlowRepository flowRepository;
     private final FnFinanceApplicationRepository financeRepository;
+    private final FnRepaymentRepository repaymentRepository;
+    private final ClearingResultRepository clearingResultRepository;
+    private final AcctVirtualAccountRepository accountRepository;
+    private final BpmProcessService bpmProcessService;
+    private final BankFlowService bankFlowService;
     private final TenantContext tenantContext;
     private final DataScopeHelper dataScopeHelper;
     private final AuditLogService auditLogService;
+    private final SecondaryAuthVerifier secondaryAuthVerifier;
+    private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
 
     public VoucherService(
             DvVoucherRepository voucherRepository,
             DvVoucherFlowRepository flowRepository,
             FnFinanceApplicationRepository financeRepository,
+            FnRepaymentRepository repaymentRepository,
+            ClearingResultRepository clearingResultRepository,
+            AcctVirtualAccountRepository accountRepository,
+            BpmProcessService bpmProcessService,
+            BankFlowService bankFlowService,
             TenantContext tenantContext,
             DataScopeHelper dataScopeHelper,
             AuditLogService auditLogService,
+            SecondaryAuthVerifier secondaryAuthVerifier,
+            IdempotencyService idempotencyService,
             ObjectMapper objectMapper) {
         this.voucherRepository = voucherRepository;
         this.flowRepository = flowRepository;
         this.financeRepository = financeRepository;
+        this.repaymentRepository = repaymentRepository;
+        this.clearingResultRepository = clearingResultRepository;
+        this.accountRepository = accountRepository;
+        this.bpmProcessService = bpmProcessService;
+        this.bankFlowService = bankFlowService;
         this.tenantContext = tenantContext;
         this.dataScopeHelper = dataScopeHelper;
         this.auditLogService = auditLogService;
+        this.secondaryAuthVerifier = secondaryAuthVerifier;
+        this.idempotencyService = idempotencyService;
         this.objectMapper = objectMapper;
     }
 
@@ -230,15 +277,157 @@ public class VoucherService {
     public VoucherDetailView redeemApply(String id, VoucherRedeemRequest request) {
         tenantContext.requirePermission("VOUCHER_REDEEM");
         DvVoucher voucher = loadAccessibleForUpdate(id);
-        assertActive(voucher);
+        assertRedeemable(voucher);
+        BigDecimal redeemAmount = voucher.getAvailableAmount();
+        String restoreStatus = voucher.getVoucherStatus();
+        BpmProcessInstance instance = bpmProcessService.startProcess(
+                REDEEM_PROCESS_CODE, REDEEM_BUSINESS_TYPE, voucher.getId(), REDEEM_APPROVER_USER_ID);
+        voucher.setRedeemRestoreStatus(restoreStatus);
+        voucher.setRedeemAmount(redeemAmount);
+        voucher.setBpmInstanceId(instance.getId());
         voucher.setVoucherStatus("REDEEM_PENDING");
         voucher.setVersionNo(voucher.getVersionNo() + 1);
         voucherRepository.save(voucher);
         addFlow(voucher, "REDEEM_APPLY", voucher.getHolderId(), voucher.getAcceptorId(),
-                voucher.getAvailableAmount(), voucher.getAvailableAmount(), voucher.getAvailableAmount(),
-                null, SecurityUtils.currentUserId());
-        auditLogService.log("REDEEM_APPLY", "VOUCHER", voucher.getId(), null, auditMap(voucher));
+                redeemAmount, redeemAmount, redeemAmount,
+                instance.getId(), SecurityUtils.currentUserId());
+        auditLogService.log("REDEEM_APPLY", "VOUCHER", voucher.getId(),
+                Map.of("voucher_status", restoreStatus),
+                auditMap(voucher));
         return detail(voucher);
+    }
+
+    public VoucherRedeemExecuteView redeemExecute(
+            String id,
+            VoucherRedeemExecuteRequest request,
+            String idempotencyKey,
+            String secondaryAuthToken) {
+        tenantContext.requirePermission("VOUCHER_REDEEM_EXECUTE");
+        secondaryAuthVerifier.requireValid(secondaryAuthToken);
+        String requestBody = id + "|" + request.payerAccountId() + "|" + request.receiverAccountId();
+        IdempotentExecutionResult<VoucherRedeemExecuteView> result = idempotencyService.executeWithReplay(
+                idempotencyKey,
+                "VOUCHER_REDEEM_EXECUTE",
+                requestBody,
+                VoucherRedeemExecuteView.class,
+                () -> doRedeemExecute(id, request, idempotencyKey));
+        return result.replay() ? result.value().withIdempotentReplay(true) : result.value();
+    }
+
+    @Transactional
+    protected VoucherRedeemExecuteView doRedeemExecute(
+            String id, VoucherRedeemExecuteRequest request, String idempotencyKey) {
+        DvVoucher voucher = loadAccessibleForUpdate(id);
+        if (!"REDEEM_APPROVED".equals(voucher.getVoucherStatus())) {
+            throw new BusinessException("STATE_409", "仅审批通过的凭证可执行兑付", 409);
+        }
+        if (flowRepository.existsByVoucherIdAndFlowTypeAndRelatedVoucherId(id, "REDEEM_PAY", idempotencyKey)) {
+            return toRedeemExecuteView(voucher, request, Instant.now(), false);
+        }
+        assertNoFinanceLock(voucher);
+        BigDecimal redeemAmount = voucher.getRedeemAmount() == null
+                ? voucher.getAvailableAmount()
+                : voucher.getRedeemAmount();
+        if (redeemAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException("VALID_400", "兑付金额无效", 400);
+        }
+
+        String operatorId = tenantContext.requireOperatorId();
+        String projectId = tenantContext.requireProjectId();
+        AcctVirtualAccount payer = requireActiveAccount(
+                request.payerAccountId(), operatorId, projectId, voucher.getAcceptorId(), voucher.getCurrency());
+        AcctVirtualAccount receiver = requireActiveAccount(
+                request.receiverAccountId(), operatorId, projectId, voucher.getHolderId(), voucher.getCurrency());
+        if (payer.getBalance().compareTo(redeemAmount) < 0) {
+            throw new BusinessException("ACCOUNT_409", "承兑方账户余额不足", 409);
+        }
+
+        Instant now = Instant.now();
+        String flowNo = "REDEEM-" + idempotencyKey;
+        payer.setBalance(payer.getBalance().subtract(redeemAmount));
+        receiver.setBalance(receiver.getBalance().add(redeemAmount));
+        accountRepository.save(payer);
+        accountRepository.save(receiver);
+        bankFlowService.recordRedeemPair(
+                voucher.getId(),
+                payer.getId(),
+                receiver.getId(),
+                flowNo,
+                redeemAmount,
+                voucher.getCurrency(),
+                now,
+                receiver.getAccountName(),
+                receiver.getAccountNo());
+
+        BigDecimal beforeAvailable = voucher.getAvailableAmount();
+        voucher.setAvailableAmount(BigDecimal.ZERO);
+        voucher.setVoucherStatus("REDEEMED");
+        voucher.setVersionNo(voucher.getVersionNo() + 1);
+        voucherRepository.save(voucher);
+        addFlow(voucher, "REDEEM_PAY", voucher.getAcceptorId(), voucher.getHolderId(),
+                redeemAmount, beforeAvailable, BigDecimal.ZERO, idempotencyKey, SecurityUtils.currentUserId());
+        auditLogService.log("REDEEM_EXECUTE", "VOUCHER", voucher.getId(),
+                Map.of("voucher_status", "REDEEM_APPROVED", "available_amount", beforeAvailable.toPlainString()),
+                Map.of(
+                        "voucher_status", "REDEEMED",
+                        "redeem_amount", redeemAmount.toPlainString(),
+                        "payer_account_id", payer.getId(),
+                        "receiver_account_id", receiver.getId()));
+        return toRedeemExecuteView(voucher, request, now, false);
+    }
+
+    @Transactional
+    public void assertRedeemPendingForBpm(String voucherId) {
+        DvVoucher voucher = voucherRepository.findByIdForUpdate(voucherId)
+                .orElseThrow(() -> new BusinessException("DATA_404", "凭证不存在", 404));
+        if (!"REDEEM_PENDING".equals(voucher.getVoucherStatus())) {
+            throw new BusinessException("STATE_409", "凭证不在兑付待审状态", 409);
+        }
+        assertNoFinanceLock(voucher);
+    }
+
+    @Transactional
+    public void onRedeemBpmApproved(String voucherId) {
+        DvVoucher voucher = voucherRepository.findByIdForUpdate(voucherId)
+                .orElseThrow(() -> new BusinessException("DATA_404", "凭证不存在", 404));
+        if (!"REDEEM_PENDING".equals(voucher.getVoucherStatus())) {
+            return;
+        }
+        assertNoFinanceLock(voucher);
+        voucher.setVoucherStatus("REDEEM_APPROVED");
+        voucher.setVersionNo(voucher.getVersionNo() + 1);
+        voucherRepository.save(voucher);
+        BigDecimal redeemAmount = voucher.getRedeemAmount() == null
+                ? voucher.getAvailableAmount()
+                : voucher.getRedeemAmount();
+        addFlow(voucher, "REDEEM_APPROVE", voucher.getAcceptorId(), voucher.getHolderId(),
+                redeemAmount, voucher.getAvailableAmount(), voucher.getAvailableAmount(),
+                voucher.getBpmInstanceId(), SecurityUtils.currentUserId());
+        auditLogService.log("REDEEM_APPROVE", "VOUCHER", voucher.getId(), null, auditMap(voucher));
+    }
+
+    @Transactional
+    public void onRedeemBpmRejected(String voucherId) {
+        DvVoucher voucher = voucherRepository.findByIdForUpdate(voucherId)
+                .orElseThrow(() -> new BusinessException("DATA_404", "凭证不存在", 404));
+        if (!"REDEEM_PENDING".equals(voucher.getVoucherStatus())) {
+            return;
+        }
+        BigDecimal redeemAmount = voucher.getRedeemAmount() == null
+                ? voucher.getAvailableAmount()
+                : voucher.getRedeemAmount();
+        voucher.setVoucherStatus("REJECTED");
+        voucher.setRedeemRestoreStatus(null);
+        voucher.setRedeemAmount(null);
+        voucher.setBpmInstanceId(null);
+        voucher.setVersionNo(voucher.getVersionNo() + 1);
+        voucherRepository.save(voucher);
+        addFlow(voucher, "REDEEM_REJECT", voucher.getAcceptorId(), voucher.getHolderId(),
+                redeemAmount, voucher.getAvailableAmount(), voucher.getAvailableAmount(),
+                null, SecurityUtils.currentUserId());
+        auditLogService.log("REDEEM_REJECT", "VOUCHER", voucher.getId(),
+                Map.of("voucher_status", "REDEEM_PENDING"),
+                Map.of("voucher_status", "REJECTED"));
     }
 
     @Transactional
@@ -465,7 +654,98 @@ public class VoucherService {
                 .stream()
                 .map(VoucherFlowView::from)
                 .toList();
-        return VoucherDetailView.from(VoucherView.from(voucher), flows, buildFinanceSummary(voucher));
+        return VoucherDetailView.from(
+                VoucherView.from(voucher),
+                flows,
+                buildFinanceSummary(voucher),
+                buildRelatedFinances(voucher),
+                buildClearingRecords(voucher),
+                buildRedeemRecords(flows));
+    }
+
+    private List<VoucherRelatedFinanceView> buildRelatedFinances(DvVoucher voucher) {
+        List<FnFinanceApplication> finances = financeRepository
+                .findByOperatorIdAndProjectIdAndSourceTypeAndSourceIdAndDeletedFlagOrderByCreatedAtDesc(
+                        voucher.getOperatorId(), voucher.getProjectId(), "VOUCHER", voucher.getId(), (short) 0);
+        return finances.stream()
+                .map(f -> new VoucherRelatedFinanceView(
+                        f.getId(),
+                        f.getFinanceNo(),
+                        f.getFinanceStatus(),
+                        f.getProductType(),
+                        money(f.getDisbursedAmount()),
+                        f.getCurrency()))
+                .toList();
+    }
+
+    private List<VoucherClearingRecordView> buildClearingRecords(DvVoucher voucher) {
+        List<FnFinanceApplication> finances = financeRepository
+                .findByOperatorIdAndProjectIdAndSourceTypeAndSourceIdAndDeletedFlagOrderByCreatedAtDesc(
+                        voucher.getOperatorId(), voucher.getProjectId(), "VOUCHER", voucher.getId(), (short) 0);
+        if (finances.isEmpty()) {
+            return List.of();
+        }
+        List<String> financeIds = finances.stream().map(FnFinanceApplication::getId).toList();
+        List<FnRepayment> repayments = repaymentRepository.findByFinanceIdInOrderByCreatedAtDesc(financeIds);
+        List<VoucherClearingRecordView> records = new ArrayList<>();
+        for (FnRepayment repayment : repayments) {
+            ClearingResult clearing = clearingResultRepository.findByRepaymentId(repayment.getId()).orElse(null);
+            records.add(new VoucherClearingRecordView(
+                    repayment.getId(),
+                    repayment.getFinanceId(),
+                    money(repayment.getAmount()),
+                    clearing == null ? null : money(clearing.getPrincipalAmount()),
+                    clearing == null ? null : money(clearing.getInterestAmount()),
+                    clearing == null ? repayment.getRepaymentStatus() : clearing.getClearingStatus(),
+                    clearing == null ? repayment.getCreatedAt() : clearing.getCreatedAt()));
+        }
+        return records;
+    }
+
+    private static List<VoucherRedeemRecordView> buildRedeemRecords(List<VoucherFlowView> flows) {
+        return flows.stream()
+                .filter(f -> REDEEM_RECORD_FLOW_TYPES.contains(f.flowType()))
+                .map(f -> new VoucherRedeemRecordView(
+                        f.flowType(),
+                        f.amount(),
+                        f.fromHolderId(),
+                        f.toHolderId(),
+                        f.operatedBy(),
+                        f.operatedAt()))
+                .toList();
+    }
+
+    private VoucherRedeemExecuteView toRedeemExecuteView(
+            DvVoucher voucher, VoucherRedeemExecuteRequest request, Instant executedAt, Boolean replay) {
+        BigDecimal redeemAmount = voucher.getRedeemAmount() == null
+                ? voucher.getAvailableAmount()
+                : voucher.getRedeemAmount();
+        return new VoucherRedeemExecuteView(
+                voucher.getId(),
+                voucher.getVoucherStatus(),
+                money(redeemAmount),
+                voucher.getCurrency(),
+                request.payerAccountId(),
+                request.receiverAccountId(),
+                executedAt,
+                replay);
+    }
+
+    private AcctVirtualAccount requireActiveAccount(
+            String accountId, String operatorId, String projectId, String enterpriseId, String currency) {
+        AcctVirtualAccount account = accountRepository
+                .findByIdAndOperatorIdAndProjectId(accountId, operatorId, projectId)
+                .orElseThrow(() -> new BusinessException("ACCOUNT_409", "账户不存在或不可用", 409));
+        if (!"ACTIVE".equals(account.getStatus())) {
+            throw new BusinessException("ACCOUNT_409", "账户不存在或不可用", 409);
+        }
+        if (!enterpriseId.equals(account.getEnterpriseId())) {
+            throw new BusinessException("AUTH_403", "账户所属企业不匹配", 403);
+        }
+        if (!currency.equals(account.getCurrency())) {
+            throw new BusinessException("VALID_400", "账户币种不匹配", 400);
+        }
+        return account;
     }
 
     private VoucherFinanceSummaryView buildFinanceSummary(DvVoucher voucher) {
@@ -483,7 +763,12 @@ public class VoucherService {
 
     private static BigDecimal pendingRedeemAmount(DvVoucher voucher) {
         String status = voucher.getVoucherStatus();
-        if ("CANCELLED".equals(status) || "REDEEMED".equals(status) || "DRAFT".equals(status)) {
+        if ("REDEEM_PENDING".equals(status) || "REDEEM_APPROVED".equals(status)) {
+            return voucher.getRedeemAmount() == null
+                    ? (voucher.getAvailableAmount() == null ? BigDecimal.ZERO : voucher.getAvailableAmount())
+                    : voucher.getRedeemAmount();
+        }
+        if ("CANCELLED".equals(status) || "REDEEMED".equals(status) || "DRAFT".equals(status) || "REJECTED".equals(status)) {
             return BigDecimal.ZERO;
         }
         return voucher.getAvailableAmount() == null ? BigDecimal.ZERO : voucher.getAvailableAmount();
@@ -531,6 +816,18 @@ public class VoucherService {
                 && !"ISSUED".equals(voucher.getVoucherStatus())
                 && !"TRANSFERRED".equals(voucher.getVoucherStatus())) {
             throw new BusinessException("STATE_409", "仅已签发凭证可执行该操作", 409);
+        }
+    }
+
+    private void assertRedeemable(DvVoucher voucher) {
+        assertNoFinanceLock(voucher);
+        assertActive(voucher);
+    }
+
+    private static void assertNoFinanceLock(DvVoucher voucher) {
+        BigDecimal locked = voucher.getLockedAmount() == null ? BigDecimal.ZERO : voucher.getLockedAmount();
+        if (locked.compareTo(BigDecimal.ZERO) > 0) {
+            throw new BusinessException("VOUCHER_LOCK_409", "存在未释放融资锁定，不可兑付", 409);
         }
     }
 

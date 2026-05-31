@@ -23,24 +23,80 @@
       </el-descriptions>
       <div class="action-row">
         <el-button v-if="canIssue && detail.voucher.voucher_status === 'DRAFT'" type="success" @click="onIssue">签发</el-button>
-        <el-button v-if="canTransfer && detail.voucher.voucher_status === 'ACCEPTED'" @click="transferVisible = true">转让</el-button>
-        <el-button v-if="canSplit && detail.voucher.voucher_status === 'ACCEPTED'" @click="splitVisible = true">拆分</el-button>
-        <el-button v-if="canRedeem && detail.voucher.voucher_status === 'ACCEPTED'" type="warning" @click="onRedeem">兑付申请</el-button>
+        <el-button
+          v-if="canTransfer && ['ACCEPTED', 'ISSUED', 'TRANSFERRED'].includes(detail.voucher.voucher_status)"
+          @click="transferVisible = true"
+        >
+          转让
+        </el-button>
+        <el-button
+          v-if="canSplit && ['ACCEPTED', 'ISSUED', 'TRANSFERRED'].includes(detail.voucher.voucher_status)"
+          @click="splitVisible = true"
+        >
+          拆分
+        </el-button>
+        <el-button
+          v-if="canRedeem && ['ACCEPTED', 'ISSUED', 'TRANSFERRED'].includes(detail.voucher.voucher_status)"
+          type="warning"
+          @click="onRedeem"
+        >
+          兑付申请
+        </el-button>
+        <el-button
+          v-if="canRedeemExecute && detail.voucher.voucher_status === 'REDEEM_APPROVED'"
+          type="primary"
+          @click="executeVisible = true"
+        >
+          兑付执行
+        </el-button>
         <el-button v-if="canCancel && ['DRAFT','ACCEPTED'].includes(detail.voucher.voucher_status)" type="danger" @click="onCancel">作废</el-button>
       </div>
     </el-card>
 
-    <el-card class="flow-card" shadow="never">
-      <template #header>流转记录</template>
-      <el-table :data="detail?.flows ?? []" stripe>
-        <el-table-column prop="flow_type" label="类型" width="130" />
-        <el-table-column prop="from_holder_id" label="转出方" width="150" />
-        <el-table-column prop="to_holder_id" label="转入方" width="150" />
-        <el-table-column prop="amount" label="金额" width="120" />
-        <el-table-column prop="after_available_amount" label="操作后余额" width="130" />
-        <el-table-column prop="operated_by" label="操作人" width="120" />
-        <el-table-column prop="operated_at" label="时间" min-width="180" />
-      </el-table>
+    <el-card v-if="detail" class="tabs-card" shadow="never">
+      <el-tabs v-model="activeTab">
+        <el-tab-pane label="流转记录" name="flows">
+          <el-table :data="detail.flows ?? []" stripe>
+            <el-table-column prop="flow_type" label="类型" width="130" />
+            <el-table-column prop="from_holder_id" label="转出方" width="150" />
+            <el-table-column prop="to_holder_id" label="转入方" width="150" />
+            <el-table-column prop="amount" label="金额" width="120" />
+            <el-table-column prop="after_available_amount" label="操作后余额" width="130" />
+            <el-table-column prop="operated_by" label="操作人" width="120" />
+            <el-table-column prop="operated_at" label="时间" min-width="180" />
+          </el-table>
+        </el-tab-pane>
+        <el-tab-pane label="关联融资单" name="finances">
+          <el-table :data="detail.related_finances ?? []" stripe>
+            <el-table-column prop="finance_no" label="融资编号" width="160" />
+            <el-table-column prop="finance_status" label="状态" width="120" />
+            <el-table-column prop="product_type" label="产品类型" width="140" />
+            <el-table-column prop="disbursed_amount" label="已放款" width="120" />
+            <el-table-column prop="currency" label="币种" width="80" />
+          </el-table>
+        </el-tab-pane>
+        <el-tab-pane label="还款/清分流水" name="clearing">
+          <el-table :data="detail.clearing_records ?? []" stripe>
+            <el-table-column prop="repayment_id" label="还款单" width="140" />
+            <el-table-column prop="finance_id" label="融资单" width="140" />
+            <el-table-column prop="repayment_amount" label="还款金额" width="120" />
+            <el-table-column prop="principal_amount" label="本金" width="100" />
+            <el-table-column prop="interest_amount" label="利息" width="100" />
+            <el-table-column prop="clearing_status" label="清分状态" width="120" />
+            <el-table-column prop="created_at" label="时间" min-width="180" />
+          </el-table>
+        </el-tab-pane>
+        <el-tab-pane label="兑付记录" name="redeem">
+          <el-table :data="detail.redeem_records ?? []" stripe>
+            <el-table-column prop="flow_type" label="类型" width="130" />
+            <el-table-column prop="from_holder_id" label="转出方" width="150" />
+            <el-table-column prop="to_holder_id" label="转入方" width="150" />
+            <el-table-column prop="amount" label="金额" width="120" />
+            <el-table-column prop="operated_by" label="操作人" width="120" />
+            <el-table-column prop="operated_at" label="时间" min-width="180" />
+          </el-table>
+        </el-tab-pane>
+      </el-tabs>
     </el-card>
 
     <el-dialog v-model="transferVisible" title="凭证转让" width="460px">
@@ -65,6 +121,19 @@
         <el-button type="primary" @click="onSplit">确认拆分</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="executeVisible" title="兑付执行" width="520px">
+      <el-alert type="warning" show-icon :closable="false" title="兑付执行需二次确认，将自承兑方账户划付至持有人账户。" />
+      <el-form class="execute-form" label-width="110px">
+        <el-form-item label="出款账户"><el-input v-model="executeForm.payer_account_id" /></el-form-item>
+        <el-form-item label="收款账户"><el-input v-model="executeForm.receiver_account_id" /></el-form-item>
+        <el-form-item label="备注"><el-input v-model="executeForm.remark" type="textarea" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="executeVisible = false">取消</el-button>
+        <el-button type="primary" @click="onRedeemExecute">确认执行</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -77,6 +146,7 @@ import {
   cancelVoucher,
   getVoucher,
   issueVoucher,
+  redeemExecuteVoucher,
   redeemVoucher,
   splitVoucher,
   transferVoucher,
@@ -89,13 +159,21 @@ const { hasPermission } = usePermission()
 const canIssue = hasPermission('VOUCHER_ISSUE')
 const canTransfer = hasPermission('VOUCHER_TRANSFER')
 const canSplit = hasPermission('VOUCHER_SPLIT')
-const canRedeem = hasPermission('VOUCHER_REDEEM')
+const canRedeem = hasPermission('VOUCHER_REDEEM') || hasPermission('VOUCHER_REDEEM_APPLY')
+const canRedeemExecute = hasPermission('VOUCHER_REDEEM_EXECUTE')
 const canCancel = hasPermission('VOUCHER_CANCEL')
 const detail = ref<VoucherDetail | null>(null)
+const activeTab = ref('flows')
 const transferVisible = ref(false)
 const splitVisible = ref(false)
+const executeVisible = ref(false)
 const transferForm = reactive({ to_holder_id: '', remark: '' })
 const splitForm = reactive({ amount: '', to_holder_id: '', remark: '' })
+const executeForm = reactive({
+  payer_account_id: '',
+  receiver_account_id: '',
+  remark: ''
+})
 
 async function load() {
   const res = await getVoucher(route.params.id as string)
@@ -103,7 +181,10 @@ async function load() {
     detail.value = {
       voucher: res.data.voucher ?? res.data,
       flows: res.data.flows ?? [],
-      finance_summary: res.data.finance_summary
+      finance_summary: res.data.finance_summary,
+      related_finances: res.data.related_finances ?? [],
+      clearing_records: res.data.clearing_records ?? [],
+      redeem_records: res.data.redeem_records ?? []
     }
   }
 }
@@ -134,7 +215,22 @@ function onSplit() {
 }
 
 function onRedeem() {
-  run(() => redeemVoucher(route.params.id as string, { remark: 'Mock 兑付申请' }), '兑付申请已提交')
+  run(() => redeemVoucher(route.params.id as string, { remark: '兑付申请' }), '兑付申请已提交，等待审批')
+}
+
+async function onRedeemExecute() {
+  await ElMessageBox.confirm('确认执行兑付？该操作将触发账户划付。', '二次确认', { type: 'warning' })
+  const idempotencyKey = `REDEEM-${route.params.id}-${Date.now()}`
+  run(
+    () =>
+      redeemExecuteVoucher(
+        route.params.id as string,
+        executeForm,
+        { idempotencyKey, secondaryAuthToken: 'MOCK-APPROVED' }
+      ),
+    '兑付已执行'
+  )
+  executeVisible.value = false
 }
 
 async function onCancel() {
@@ -156,8 +252,12 @@ onMounted(load)
   margin-top: 16px;
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
-.flow-card {
+.tabs-card {
+  margin-top: 16px;
+}
+.execute-form {
   margin-top: 16px;
 }
 </style>
