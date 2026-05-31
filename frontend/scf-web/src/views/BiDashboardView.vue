@@ -13,6 +13,19 @@
       </div>
     </div>
 
+    <el-alert
+      v-if="fromPilot"
+      type="success"
+      show-icon
+      :closable="false"
+      class="pilot-banner"
+      title="试点闭环视图"
+      description="当前从试点闭环 / 代采详情进入。请核对 KPI 与融资状态分布是否与业务单一致。"
+    />
+    <div v-if="fromPilot" class="pilot-banner-actions">
+      <el-button link type="primary" @click="router.push('/pilot/closure')">返回试点向导</el-button>
+    </div>
+
     <el-card class="filter-bar" shadow="never">
       <el-form inline @submit.prevent>
         <el-form-item label="趋势窗口">
@@ -186,7 +199,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import BiClearingChart from '../components/bi/BiClearingChart.vue'
 import BiFinanceStatusChart from '../components/bi/BiFinanceStatusChart.vue'
@@ -209,7 +222,9 @@ import { usePermission } from '../composables/usePermission'
 import { formatMoney } from '../utils/format'
 
 const { hasPermission } = usePermission()
+const route = useRoute()
 const router = useRouter()
+const fromPilot = computed(() => route.query.from === 'pilot')
 const canExport = computed(() => hasPermission('BI_EXPORT'))
 const canDrilldown = computed(() => hasPermission('BI_DRILLDOWN'))
 const canViewRiskCenter = computed(() => hasPermission('RISK_ALERT_VIEW'))
@@ -366,6 +381,8 @@ onMounted(loadAll)
 
 <style scoped>
 .bi-dashboard { padding-bottom: 24px; }
+.pilot-banner { margin-bottom: 4px; }
+.pilot-banner-actions { margin-bottom: 12px; }
 .page-header {
   display: flex;
   align-items: flex-start;

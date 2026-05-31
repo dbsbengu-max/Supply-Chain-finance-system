@@ -17,6 +17,16 @@
       class="hint"
     />
 
+    <el-card v-if="agencyContext" v-loading="agencyLoading" shadow="never" class="agency-context">
+      <template #header>
+        <span>当前试点单：{{ agencyContext.application_no }}</span>
+        <el-button link type="primary" @click="router.push(`/agency-purchase/applications/${agencyContext.id}`)">
+          代采详情 →
+        </el-button>
+      </template>
+      <PilotClosureTimeline :nodes="agencyTimeline" />
+    </el-card>
+
     <el-steps :active="activeStep" finish-status="success" align-center class="steps">
       <el-step v-for="step in steps" :key="step.key" :title="step.title" />
     </el-steps>
@@ -57,12 +67,47 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { getAgencyPurchaseApplicationDetail, type AgencyPurchaseApplication } from '../api/agencyPurchase'
+import { getFinanceApplication, type FinanceApplication } from '../api/finance'
+import PilotClosureTimeline from '../components/PilotClosureTimeline.vue'
 import { usePermission } from '../composables/usePermission'
+import { buildAgencyClosureTimeline } from '../utils/pilotClosureTimeline'
 
+const route = useRoute()
 const router = useRouter()
 const { hasPermission } = usePermission()
+
+const agencyLoading = ref(false)
+const agencyContext = ref<AgencyPurchaseApplication | null>(null)
+const agencyFinance = ref<FinanceApplication | null>(null)
+const agencyTimeline = computed(() =>
+  agencyContext.value ? buildAgencyClosureTimeline(agencyContext.value, agencyFinance.value) : []
+)
+
+async function loadAgencyContext() {
+  const id = route.query.agency_id as string | undefined
+  if (!id) return
+  agencyLoading.value = true
+  try {
+    const res = await getAgencyPurchaseApplicationDetail(id)
+    if (!res.success || !res.data) throw new Error(res.message || '加载代采单失败')
+    agencyContext.value = res.data
+    const fid = res.data.finance_application_id
+    if (fid) {
+      const fr = await getFinanceApplication(fid)
+      if (fr.success && fr.data) agencyFinance.value = fr.data
+    }
+  } catch (e: any) {
+    ElMessage.error(e.message || '加载试点单上下文失败')
+  } finally {
+    agencyLoading.value = false
+  }
+}
+
+onMounted(loadAgencyContext)
 
 interface PilotStep {
   key: string
@@ -162,8 +207,13 @@ function canAccess(step: PilotStep) {
   return hasPermission(step.permission)
 }
 
-/** 向导高亮步进：全部可访问时显示为进行中最后一环之前 */
+/** 向导高亮步进：有试点单上下文时按时间线进度，否则按权限 */
 const activeStep = computed(() => {
+  if (agencyTimeline.value.length) {
+    const idx = agencyTimeline.value.findIndex((n) => n.type === 'warning' || n.type === 'info')
+    if (idx >= 0) return idx
+    return Math.min(agencyTimeline.value.length - 1, steps.length - 1)
+  }
   let last = 0
   steps.forEach((step, idx) => {
     if (canAccess(step)) last = idx + 1
@@ -234,5 +284,10 @@ const activeStep = computed(() => {
 }
 .trace-card {
   margin-top: 8px;
+}
+.agency-context :deep(.el-card__header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 </style>

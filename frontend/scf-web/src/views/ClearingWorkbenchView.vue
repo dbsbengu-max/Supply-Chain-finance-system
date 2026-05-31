@@ -176,6 +176,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   calculateClearing,
@@ -365,7 +366,16 @@ async function onExecute() {
   }
 }
 
-onMounted(loadRepayableFinances)
+const route = useRoute()
+
+onMounted(async () => {
+  await loadRepayableFinances()
+  const qFinanceId = route.query.finance_id as string | undefined
+  if (qFinanceId) {
+    financeId.value = qFinanceId
+    await loadEntry()
+  }
+})
 </script>
 
 <style scoped>

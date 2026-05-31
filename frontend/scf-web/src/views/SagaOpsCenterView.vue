@@ -215,7 +215,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   approveCompensationTask,
@@ -242,6 +242,7 @@ import {
 } from '../constants/agencyPurchaseDict'
 
 const router = useRouter()
+const route = useRoute()
 const { hasPermission } = usePermission()
 const canManage = computed(() => hasPermission('SAGA_OPS_MANAGE'))
 
@@ -520,9 +521,24 @@ async function onRetryOutbox(row: OutboxEventItem) {
   await reload()
 }
 
-onMounted(() => {
-  reload()
+onMounted(async () => {
+  applyRouteQuery()
+  await reload()
+  const taskId = route.query.task_id as string | undefined
+  if (taskId) {
+    await openCompensationDetail(taskId)
+  }
 })
+
+function applyRouteQuery() {
+  const tab = route.query.tab as string | undefined
+  if (tab === 'outbox') activeTab.value = 'outbox'
+  const businessId = route.query.business_id as string | undefined
+  if (businessId) {
+    compFilters.business_id = businessId
+    outboxFilters.business_id = businessId
+  }
+}
 </script>
 
 <style scoped>

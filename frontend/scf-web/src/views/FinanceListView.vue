@@ -2,20 +2,66 @@
   <div>
     <div class="toolbar">
       <h2>融资管理</h2>
-      <el-button type="primary" @click="openCreate">新建融资申请</el-button>
+      <div class="toolbar-actions">
+        <el-button @click="router.push('/pilot/closure')">试点闭环</el-button>
+        <el-button type="primary" @click="openCreate">新建融资申请</el-button>
+      </div>
     </div>
-    <el-table :data="applications" v-loading="loading" stripe>
+
+    <el-alert
+      v-if="filterSourceId || filterHighlight"
+      type="info"
+      :closable="false"
+      show-icon
+      class="filter-banner"
+      :title="filterBannerTitle"
+    />
+
+    <el-table
+      :data="displayApplications"
+      v-loading="loading"
+      stripe
+      :row-class-name="rowClassName"
+    >
       <el-table-column prop="finance_no" label="融资编号" width="180" />
       <el-table-column prop="product_type" label="产品类型" width="140" />
-      <el-table-column prop="source_type" label="来源类型" width="110" />
-      <el-table-column prop="source_id" label="来源 ID" width="140" />
-      <el-table-column prop="apply_amount" label="申请金额" width="120" />
-      <el-table-column prop="currency" label="币种" width="80" />
-      <el-table-column prop="finance_status" label="状态" width="120" />
-      <el-table-column label="操作" width="220">
+      <el-table-column label="来源" min-width="160">
+        <template #default="{ row }">
+          <span>{{ row.source_type }}</span>
+          <el-button
+            v-if="row.source_type === 'AGENCY_PURCHASE'"
+            link
+            type="primary"
+            @click="goAgencySource(row.source_id)"
+          >
+            {{ row.source_id }}
+          </el-button>
+          <span v-else>{{ row.source_id }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="申请金额" width="140">
+        <template #default="{ row }">{{ row.apply_amount }} {{ row.currency }}</template>
+      </el-table-column>
+      <el-table-column label="状态" width="120">
+        <template #default="{ row }">
+          <el-tag :type="financeStatusTagType(row.finance_status)" size="small">
+            {{ financeStatusLabel(row.finance_status) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="280" fixed="right">
         <template #default="{ row }">
           <el-button v-if="row.finance_status === 'DRAFT'" link type="primary" @click="onSubmit(row.id)">提交</el-button>
           <el-button v-if="row.finance_status === 'SUBMITTED'" link type="success" @click="onApprove(row.id)">审批</el-button>
+          <el-button
+            v-if="canGoClearing(row.finance_status)"
+            link
+            type="warning"
+            @click="goClearing(row.id)"
+          >
+            清分
+          </el-button>
+          <el-button link @click="router.push('/bi/dashboard?from=pilot')">BI</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -31,13 +77,14 @@
         </el-form-item>
         <el-form-item label="来源类型" required>
           <el-select v-model="form.source_type" style="width: 100%">
+            <el-option label="代采" value="AGENCY_PURCHASE" />
             <el-option label="订单" value="ORDER" />
             <el-option label="凭证" value="VOUCHER" />
             <el-option label="仓单" value="RECEIPT" />
           </el-select>
         </el-form-item>
         <el-form-item label="来源 ID" required>
-          <el-input v-model="form.source_id" placeholder="如 ORD001 / VOUCHER001" />
+          <el-input v-model="form.source_id" placeholder="代采单 ID / ORD001" />
         </el-form-item>
         <el-form-item label="客户 ID" required>
           <el-input v-model="form.customer_id" />
@@ -70,7 +117,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   approveFinanceApplication,
@@ -79,6 +127,10 @@ import {
   submitFinanceApplication,
   type FinanceApplication
 } from '../api/finance'
+import { financeStatusLabel, financeStatusTagType, FINANCE_REPAYABLE_STATUSES } from '../constants/financeDict'
+
+const route = useRoute()
+const router = useRouter()
 
 const loading = ref(false)
 const applications = ref<FinanceApplication[]>([])
@@ -96,11 +148,45 @@ const form = reactive({
   annual_rate: '0.085000'
 })
 
+const filterSourceId = computed(() => (route.query.source_id as string) || '')
+const filterHighlight = computed(() => (route.query.highlight as string) || '')
+
+const filterBannerTitle = computed(() => {
+  if (filterHighlight.value) return `高亮融资单：${filterHighlight.value}`
+  if (filterSourceId.value) return `筛选来源 ID：${filterSourceId.value}`
+  return ''
+})
+
+const displayApplications = computed(() => {
+  let rows = applications.value
+  if (filterSourceId.value) {
+    rows = rows.filter((r) => r.source_id === filterSourceId.value)
+  }
+  return rows
+})
+
+function rowClassName({ row }: { row: FinanceApplication }) {
+  return row.id === filterHighlight.value ? 'row-highlight' : ''
+}
+
+function canGoClearing(status: string) {
+  return FINANCE_REPAYABLE_STATUSES.has(status)
+}
+
+function goAgencySource(sourceId: string) {
+  router.push(`/agency-purchase/applications/${sourceId}`)
+}
+
+function goClearing(financeId: string) {
+  router.push(`/accounts/clearing?finance_id=${financeId}`)
+}
+
 async function load() {
   loading.value = true
   try {
     const res = await listFinanceApplications({ page_no: 1, page_size: 50 })
     if (res.success) applications.value = res.data?.records || []
+    else ElMessage.error(res.message || '加载失败')
   } catch (e: any) {
     ElMessage.error(e.message || '加载失败')
   } finally {
@@ -129,6 +215,8 @@ async function onSubmit(id: string) {
   if (res.success) {
     ElMessage.success('已提交')
     await load()
+  } else {
+    ElMessage.error(res.message || '提交失败')
   }
 }
 
@@ -137,6 +225,8 @@ async function onApprove(id: string) {
   if (res.success) {
     ElMessage.success('审批通过')
     await load()
+  } else {
+    ElMessage.error(res.message || '审批失败')
   }
 }
 
@@ -149,5 +239,15 @@ onMounted(load)
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
+}
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+.filter-banner {
+  margin-bottom: 12px;
+}
+:deep(.row-highlight) {
+  background-color: var(--el-color-primary-light-9) !important;
 }
 </style>
