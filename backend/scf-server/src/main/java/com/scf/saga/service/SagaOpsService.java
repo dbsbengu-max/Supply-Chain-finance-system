@@ -4,7 +4,9 @@ import com.scf.audit.service.AuditLogService;
 import com.scf.common.dto.PageResponse;
 import com.scf.common.exception.BusinessException;
 import com.scf.common.security.TenantContext;
+import com.scf.saga.dto.SagaOpsDtos.CompensationTaskDetailView;
 import com.scf.saga.dto.SagaOpsDtos.CompensationTaskOpsView;
+import com.scf.saga.dto.SagaOpsDtos.OutboxEventDetailView;
 import com.scf.saga.dto.SagaOpsDtos.OutboxEventView;
 import com.scf.saga.dto.SagaOpsDtos.SagaOpsFilterMetaView;
 import com.scf.saga.dto.SagaOpsDtos.SagaOpsSummaryView;
@@ -12,6 +14,7 @@ import com.scf.saga.dto.SagaOpsDtos.StatusCountView;
 import com.scf.saga.entity.BizEventOutbox;
 import com.scf.saga.repository.BizCompensationTaskRepository;
 import com.scf.saga.repository.BizEventOutboxRepository;
+import com.scf.saga.support.SagaBusinessRouteResolver;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -119,14 +122,33 @@ public class SagaOpsService {
     }
 
     @Transactional(readOnly = true)
+    public OutboxEventDetailView getOutboxDetail(String eventId) {
+        tenantContext.requirePermission("SAGA_OPS_VIEW");
+        BizEventOutbox event = outboxRepository.findById(eventId)
+                .orElseThrow(() -> new BusinessException("DATA_404", "Outbox 事件不存在", 404));
+        return OutboxEventDetailView.from(
+                event, SagaBusinessRouteResolver.resolve(event.getBusinessType(), event.getBusinessId()));
+    }
+
+    @Transactional(readOnly = true)
+    public CompensationTaskDetailView getCompensationDetail(String taskId) {
+        tenantContext.requirePermission("SAGA_OPS_VIEW");
+        com.scf.saga.entity.BizCompensationTask task = compensationTaskRepository.findById(taskId)
+                .orElseThrow(() -> new BusinessException("DATA_404", "补偿任务不存在", 404));
+        return CompensationTaskDetailView.from(
+                task, SagaBusinessRouteResolver.resolve(task.getBusinessType(), task.getBusinessId()));
+    }
+
+    @Transactional(readOnly = true)
     public SagaOpsFilterMetaView filterMeta() {
         tenantContext.requirePermission("SAGA_OPS_VIEW");
         return new SagaOpsFilterMetaView(OUTBOX_STATUSES, COMPENSATION_STATUSES, COMPENSATION_TYPES);
     }
 
     @Transactional
-    public void retryOutbox(String eventId) {
+    public void retryOutbox(String eventId, String reason) {
         tenantContext.requirePermission("SAGA_OPS_MANAGE");
+        requireManualReason(reason);
         BizEventOutbox event = outboxRepository.findById(eventId)
                 .orElseThrow(() -> new BusinessException("DATA_404", "Outbox 事件不存在", 404));
         if (!OUTBOX_RETRYABLE.contains(event.getEventStatus())) {
@@ -147,18 +169,25 @@ public class SagaOpsService {
                 event.getBusinessType(),
                 event.getBusinessId(),
                 before,
-                Map.of("event_status", "PENDING", "retry_count", 0));
+                Map.of("event_status", "PENDING", "retry_count", 0, "manual_reason", reason.trim()));
         outboxEventProcessor.process(eventId);
     }
 
-    @Transactional
-    public void retryCompensationTask(String taskId) {
-        compensationTaskService.manualRetry(taskId);
+    public void retryCompensationTask(String taskId, String reason) {
+        compensationTaskService.manualRetry(taskId, reason);
     }
 
-    @Transactional
-    public void approveCompensationTask(String taskId) {
-        compensationTaskService.approveAndExecute(taskId);
+    public void approveCompensationTask(String taskId, String reason) {
+        compensationTaskService.approveAndExecute(taskId, reason);
+    }
+
+    private static void requireManualReason(String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new BusinessException("VALID_400", "人工操作原因不能为空", 400);
+        }
+        if (reason.trim().length() < 5) {
+            throw new BusinessException("VALID_400", "人工操作原因至少 5 个字符", 400);
+        }
     }
 
     private static String blankToNull(String value) {

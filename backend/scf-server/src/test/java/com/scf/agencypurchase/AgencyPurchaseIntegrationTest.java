@@ -138,8 +138,8 @@ class AgencyPurchaseIntegrationTest {
         String id = createDraft(platformAdminToken(), PROJECT_ID);
         mvc.perform(get("/agency-purchase/applications/" + id)
                         .headers(headers(platformAdminToken(), OTHER_PROJECT_ID)))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("DATA_404"));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("AUTH_403"));
     }
 
     @Test

@@ -62,10 +62,11 @@
         <el-card>
           <template #header>业务闭环</template>
           <ul class="progress-list">
+            <li>✅ 试点闭环向导（EA-029）</li>
+            <li>✅ Saga 监控 + 人工原因审计</li>
             <li>✅ 银行流水 / 清分 / 规则</li>
             <li>✅ 风险预警 / 经营看板</li>
-            <li>✅ 统一消息待办中心</li>
-            <li>⏳ SLA / 推送 / 批量处理</li>
+            <li>⏳ 生产 remote / PR 与 UAT 签字</li>
           </ul>
         </el-card>
       </el-col>
@@ -91,7 +92,9 @@ const selectedIdentity = ref<string>('')
 const canViewInbox = computed(() => hasPermission('INBOX_VIEW'))
 
 const shortcuts = computed(() => {
-  const items: Array<{ title: string; desc: string; path: string }> = []
+  const items: Array<{ title: string; desc: string; path: string }> = [
+    { title: '试点闭环', desc: '端到端主链路上线向导', path: '/pilot/closure' }
+  ]
   if (hasPermission('INBOX_VIEW')) {
     items.push({ title: '消息待办', desc: '统一事件通知流', path: '/inbox' })
   }

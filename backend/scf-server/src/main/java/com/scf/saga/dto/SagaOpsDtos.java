@@ -94,4 +94,79 @@ public final class SagaOpsDtos {
             @JsonProperty("compensation_types") List<String> compensationTypes
     ) {
     }
+
+    public record SagaOpsManualRequest(
+            @JsonProperty("reason") String reason
+    ) {
+    }
+
+    public record OutboxEventDetailView(
+            @JsonProperty("id") String id,
+            @JsonProperty("event_type") String eventType,
+            @JsonProperty("business_type") String businessType,
+            @JsonProperty("business_id") String businessId,
+            @JsonProperty("idempotency_key") String idempotencyKey,
+            @JsonProperty("payload_json") String payloadJson,
+            @JsonProperty("event_status") String eventStatus,
+            @JsonProperty("retry_count") int retryCount,
+            @JsonProperty("next_retry_at") Instant nextRetryAt,
+            @JsonProperty("last_error") String lastError,
+            @JsonProperty("created_at") Instant createdAt,
+            @JsonProperty("updated_at") Instant updatedAt,
+            @JsonProperty("related_route") String relatedRoute
+    ) {
+        public static OutboxEventDetailView from(BizEventOutbox event, String relatedRoute) {
+            return new OutboxEventDetailView(
+                    event.getId(),
+                    event.getEventType(),
+                    event.getBusinessType(),
+                    event.getBusinessId(),
+                    event.getIdempotencyKey(),
+                    event.getPayloadJson(),
+                    event.getEventStatus(),
+                    event.getRetryCount(),
+                    event.getNextRetryAt(),
+                    event.getLastError(),
+                    event.getCreatedAt(),
+                    event.getUpdatedAt(),
+                    relatedRoute);
+        }
+    }
+
+    public record CompensationTaskDetailView(
+            @JsonProperty("id") String id,
+            @JsonProperty("source_event_id") String sourceEventId,
+            @JsonProperty("compensation_type") String compensationType,
+            @JsonProperty("business_type") String businessType,
+            @JsonProperty("business_id") String businessId,
+            @JsonProperty("compensation_status") String compensationStatus,
+            @JsonProperty("action_json") String actionJson,
+            @JsonProperty("retry_count") int retryCount,
+            @JsonProperty("next_retry_at") Instant nextRetryAt,
+            @JsonProperty("last_error") String lastError,
+            @JsonProperty("approved_by") String approvedBy,
+            @JsonProperty("executed_at") Instant executedAt,
+            @JsonProperty("created_at") Instant createdAt,
+            @JsonProperty("updated_at") Instant updatedAt,
+            @JsonProperty("related_route") String relatedRoute
+    ) {
+        public static CompensationTaskDetailView from(BizCompensationTask task, String relatedRoute) {
+            return new CompensationTaskDetailView(
+                    task.getId(),
+                    task.getSourceEventId(),
+                    task.getCompensationType(),
+                    task.getBusinessType(),
+                    task.getBusinessId(),
+                    task.getCompensationStatus(),
+                    task.getActionJson(),
+                    task.getRetryCount(),
+                    task.getNextRetryAt(),
+                    task.getLastError(),
+                    task.getApprovedBy(),
+                    task.getExecutedAt(),
+                    task.getCreatedAt(),
+                    task.getUpdatedAt(),
+                    relatedRoute);
+        }
+    }
 }

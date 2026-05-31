@@ -8,18 +8,11 @@ DELETE FROM acct_bank_flow WHERE account_id = 'ACC_REPAY_001' AND external_flow_
 DELETE FROM idempotency_record WHERE idempotency_key LIKE 'CLR-EXEC-%';
 DELETE FROM fn_finance_application WHERE id = 'FIN_CLEAR_OK';
 
-INSERT INTO acct_virtual_account (
-  id, operator_id, project_id, enterprise_id, funding_party_id,
-  account_type, account_no, account_name, currency, balance, frozen_balance, status
-)
-VALUES (
-  'ACC_FUNDING_001', 'OP001', 'PJ001', 'ENT_FACTOR_001', 'ENT_FACTOR_001',
-  'DISBURSE', 'VA-FUND-001', '资金方放款户', 'CNY', 10000000.00, 0.00, 'ACTIVE'
-)
-ON CONFLICT (id) DO UPDATE SET
-  balance = EXCLUDED.balance,
-  status = EXCLUDED.status;
-
+UPDATE acct_virtual_account
+SET balance = 10000000.00,
+    frozen_balance = 0.00,
+    status = 'ACTIVE'
+WHERE id = 'ACC_FUNDING_001';
 UPDATE acct_virtual_account SET balance = 0.00 WHERE id = 'ACC_REPAY_001';
 
 INSERT INTO fn_finance_application (

@@ -1,6 +1,7 @@
 package com.scf.saga.service;
 
 import com.scf.audit.service.AuditLogService;
+import com.scf.agencypurchase.repository.ApAgencyPurchaseApplicationRepository;
 import com.scf.saga.entity.BizCompensationTask;
 import com.scf.saga.repository.BizCompensationTaskRepository;
 import org.slf4j.Logger;
@@ -17,17 +18,20 @@ import java.util.Map;
 public class CompensationTaskProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(CompensationTaskProcessor.class);
-    static final int[] RETRY_MINUTES = {1, 3, 5, 10, 30};
+    public static final int[] RETRY_MINUTES = {1, 3, 5, 10, 30};
 
     private final BizCompensationTaskRepository repository;
+    private final ApAgencyPurchaseApplicationRepository applicationRepository;
     private final AgencyPurchaseCompensationHandler agencyPurchaseCompensationHandler;
     private final AuditLogService auditLogService;
 
     public CompensationTaskProcessor(
             BizCompensationTaskRepository repository,
+            ApAgencyPurchaseApplicationRepository applicationRepository,
             AgencyPurchaseCompensationHandler agencyPurchaseCompensationHandler,
             AuditLogService auditLogService) {
         this.repository = repository;
+        this.applicationRepository = applicationRepository;
         this.agencyPurchaseCompensationHandler = agencyPurchaseCompensationHandler;
         this.auditLogService = auditLogService;
     }
@@ -78,11 +82,12 @@ public class CompensationTaskProcessor {
         if (retry >= RETRY_MINUTES.length) {
             task.setCompensationStatus("MANUAL_REQUIRED");
             task.setNextRetryAt(null);
+            AuditContext context = auditContext(task);
             auditLogService.logAsSystem(
                     "system",
-                    null,
-                    null,
-                    null,
+                    context.operatorId(),
+                    context.enterpriseId(),
+                    context.projectId(),
                     "SAGA_COMPENSATION_MANUAL",
                     task.getBusinessType(),
                     task.getBusinessId(),
@@ -97,6 +102,21 @@ public class CompensationTaskProcessor {
         } else {
             task.setCompensationStatus("FAILED");
             task.setNextRetryAt(Instant.now().plus(RETRY_MINUTES[retry - 1], ChronoUnit.MINUTES));
+        }
+    }
+
+    private AuditContext auditContext(BizCompensationTask task) {
+        if ("AGENCY_PURCHASE".equals(task.getBusinessType())) {
+            return applicationRepository.findById(task.getBusinessId())
+                    .map(app -> new AuditContext(app.getOperatorId(), null, app.getProjectId()))
+                    .orElseGet(AuditContext::fallback);
+        }
+        return AuditContext.fallback();
+    }
+
+    private record AuditContext(String operatorId, String enterpriseId, String projectId) {
+        static AuditContext fallback() {
+            return new AuditContext("OP001", null, null);
         }
     }
 }

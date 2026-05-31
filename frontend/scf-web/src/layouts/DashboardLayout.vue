@@ -4,6 +4,7 @@
       <div class="brand">SCF 平台</div>
       <el-menu :default-active="active" router>
         <el-menu-item index="/">工作台</el-menu-item>
+        <el-menu-item index="/pilot/closure">试点闭环</el-menu-item>
         <el-menu-item v-if="canViewInbox" index="/inbox">消息待办</el-menu-item>
         <el-menu-item v-if="canViewAudit" index="/audit/logs">审计日志</el-menu-item>
         <el-menu-item v-if="canViewSagaOps" index="/saga/ops">Saga 监控</el-menu-item>

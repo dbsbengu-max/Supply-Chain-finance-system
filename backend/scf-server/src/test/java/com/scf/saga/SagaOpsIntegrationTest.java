@@ -89,7 +89,11 @@ class SagaOpsIntegrationTest {
                 SET available_quantity = ?, frozen_quantity = ?
                 WHERE id = ?
                 """, new BigDecimal("80.000000"), new BigDecimal("20.000000"), "INV_SAGA");
-        String taskId = insertPendingInventoryUnfreeze(AGENCY_INV_ID, "999");
+        String taskId = insertPendingInventoryUnfreeze(AGENCY_INV_ID, "20");
+        jdbcTemplate.update(
+                "UPDATE scf.biz_compensation_task SET action_json = ? WHERE id = ?",
+                "{\"inventory_id\":\"INV_MISSING\",\"quantity\":\"20\"}",
+                taskId);
         compensationTaskProcessor.process(taskId);
         assertEquals("FAILED", compensationStatus(taskId));
 
@@ -99,7 +103,8 @@ class SagaOpsIntegrationTest {
                 taskId);
 
         mvc.perform(post("/saga/ops/compensation-tasks/" + taskId + "/retry")
-                        .headers(platformHeaders("EA028-INV-RETRY")))
+                        .headers(platformHeaders("EA028-INV-RETRY"))
+                        .content(manualReasonJson()))
                 .andExpect(status().isOk());
 
         assertEquals("SUCCESS", compensationStatus(taskId));
@@ -149,7 +154,8 @@ class SagaOpsIntegrationTest {
                 new BigDecimal("100.00"), "ACC_MARGIN_SAGA");
 
         mvc.perform(post("/saga/ops/compensation-tasks/" + taskId + "/retry")
-                        .headers(platformHeaders("EA028-RETRY")))
+                        .headers(platformHeaders("EA028-RETRY"))
+                        .content(manualReasonJson()))
                 .andExpect(status().isOk());
 
         assertEquals("SUCCESS", compensationStatus(taskId));
@@ -168,7 +174,8 @@ class SagaOpsIntegrationTest {
                 """, CompensationTaskProcessor.RETRY_MINUTES.length, taskId);
 
         mvc.perform(post("/saga/ops/compensation-tasks/" + taskId + "/approve-execute")
-                        .headers(platformHeaders("EA028-APPROVE")))
+                        .headers(platformHeaders("EA028-APPROVE"))
+                        .content(manualReasonJson()))
                 .andExpect(status().isOk());
 
         assertEquals("SUCCESS", compensationStatus(taskId));
@@ -196,8 +203,36 @@ class SagaOpsIntegrationTest {
                 .andExpect(status().isOk());
 
         mvc.perform(post("/saga/ops/compensation-tasks/" + taskId + "/retry")
-                        .headers(fundingHeaders("EA028-FORBID")))
+                        .headers(fundingHeaders("EA028-FORBID"))
+                        .content(manualReasonJson()))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void ea029ManualRetryRequiresReason() throws Exception {
+        String taskId = insertPendingMarginUnfreeze(AGENCY_ID, "ACC_MISSING", "10.00");
+        compensationTaskProcessor.process(taskId);
+
+        mvc.perform(post("/saga/ops/compensation-tasks/" + taskId + "/retry")
+                        .headers(platformHeaders("EA029-NO-REASON"))
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void ea029CompensationDetailReturnsActionJsonAndRoute() throws Exception {
+        String taskId = insertPendingMarginUnfreeze(AGENCY_ID, "ACC_MARGIN_SAGA", "50.00");
+
+        mvc.perform(get("/saga/ops/compensation-tasks/" + taskId).headers(platformHeaders("EA029-DETAIL")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.business_id").value(AGENCY_ID))
+                .andExpect(jsonPath("$.data.action_json").isNotEmpty())
+                .andExpect(jsonPath("$.data.related_route")
+                        .value("/agency-purchase/applications/" + AGENCY_ID));
+    }
+
+    private static String manualReasonJson() {
+        return "{\"reason\":\"集成测试人工操作原因说明\"}";
     }
 
     private String insertPendingMarginUnfreeze(String agencyId, String accountId, String amount) {

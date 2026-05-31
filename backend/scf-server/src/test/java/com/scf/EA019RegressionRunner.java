@@ -17,8 +17,11 @@ public class EA019RegressionRunner {
                 .selectors(
                         DiscoverySelectors.selectClass("com.scf.bi.BiDashboardIntegrationTest"),
                         DiscoverySelectors.selectClass("com.scf.bpm.BpmFourEyesIntegrationTest"),
+                        DiscoverySelectors.selectClass("com.scf.agencypurchase.AgencyPurchaseIntegrationTest"),
                         DiscoverySelectors.selectClass("com.scf.account.ClearingRuleIntegrationTest"),
+                        DiscoverySelectors.selectClass("com.scf.account.AccountClearingIntegrationTest"),
                         DiscoverySelectors.selectClass("com.scf.finance.FinanceDisburseIntegrationTest"),
+                        DiscoverySelectors.selectClass("com.scf.finance.BankChannelCallbackIntegrationTest"),
                         DiscoverySelectors.selectClass("com.scf.risk.RiskAlertCenterIntegrationTest"),
                         DiscoverySelectors.selectClass("com.scf.inbox.InboxCenterIntegrationTest"),
                         DiscoverySelectors.selectClass("com.scf.audit.AuditCenterIntegrationTest"),

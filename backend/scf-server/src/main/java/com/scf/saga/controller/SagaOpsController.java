@@ -2,15 +2,19 @@ package com.scf.saga.controller;
 
 import com.scf.common.dto.ApiResponse;
 import com.scf.common.dto.PageResponse;
+import com.scf.saga.dto.SagaOpsDtos.CompensationTaskDetailView;
 import com.scf.saga.dto.SagaOpsDtos.CompensationTaskOpsView;
+import com.scf.saga.dto.SagaOpsDtos.OutboxEventDetailView;
 import com.scf.saga.dto.SagaOpsDtos.OutboxEventView;
 import com.scf.saga.dto.SagaOpsDtos.SagaOpsFilterMetaView;
+import com.scf.saga.dto.SagaOpsDtos.SagaOpsManualRequest;
 import com.scf.saga.dto.SagaOpsDtos.SagaOpsSummaryView;
 import com.scf.saga.service.SagaOpsService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -49,6 +53,11 @@ public class SagaOpsController {
                 request.getHeader("X-Request-Id"));
     }
 
+    @GetMapping("/outbox/{id}")
+    public ApiResponse<OutboxEventDetailView> getOutboxDetail(@PathVariable String id, HttpServletRequest request) {
+        return ApiResponse.ok(sagaOpsService.getOutboxDetail(id), request.getHeader("X-Request-Id"));
+    }
+
     @GetMapping("/compensation-tasks")
     public ApiResponse<PageResponse<CompensationTaskOpsView>> listCompensationTasks(
             HttpServletRequest request,
@@ -64,21 +73,36 @@ public class SagaOpsController {
                 request.getHeader("X-Request-Id"));
     }
 
+    @GetMapping("/compensation-tasks/{id}")
+    public ApiResponse<CompensationTaskDetailView> getCompensationDetail(
+            @PathVariable String id, HttpServletRequest request) {
+        return ApiResponse.ok(sagaOpsService.getCompensationDetail(id), request.getHeader("X-Request-Id"));
+    }
+
     @PostMapping("/outbox/{id}/retry")
-    public ApiResponse<Void> retryOutbox(@PathVariable String id, HttpServletRequest request) {
-        sagaOpsService.retryOutbox(id);
+    public ApiResponse<Void> retryOutbox(
+            @PathVariable String id,
+            @RequestBody SagaOpsManualRequest body,
+            HttpServletRequest request) {
+        sagaOpsService.retryOutbox(id, body == null ? null : body.reason());
         return ApiResponse.ok(null, request.getHeader("X-Request-Id"));
     }
 
     @PostMapping("/compensation-tasks/{id}/retry")
-    public ApiResponse<Void> retryCompensation(@PathVariable String id, HttpServletRequest request) {
-        sagaOpsService.retryCompensationTask(id);
+    public ApiResponse<Void> retryCompensation(
+            @PathVariable String id,
+            @RequestBody SagaOpsManualRequest body,
+            HttpServletRequest request) {
+        sagaOpsService.retryCompensationTask(id, body == null ? null : body.reason());
         return ApiResponse.ok(null, request.getHeader("X-Request-Id"));
     }
 
     @PostMapping("/compensation-tasks/{id}/approve-execute")
-    public ApiResponse<Void> approveCompensation(@PathVariable String id, HttpServletRequest request) {
-        sagaOpsService.approveCompensationTask(id);
+    public ApiResponse<Void> approveCompensation(
+            @PathVariable String id,
+            @RequestBody SagaOpsManualRequest body,
+            HttpServletRequest request) {
+        sagaOpsService.approveCompensationTask(id, body == null ? null : body.reason());
         return ApiResponse.ok(null, request.getHeader("X-Request-Id"));
     }
 }

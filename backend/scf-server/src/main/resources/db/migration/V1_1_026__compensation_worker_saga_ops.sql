@@ -1,9 +1,15 @@
 SET search_path TO scf;
 
 ALTER TABLE biz_compensation_task
-  ADD COLUMN IF NOT EXISTS retry_count int NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS next_retry_at timestamptz,
-  ADD COLUMN IF NOT EXISTS last_error varchar(1000),
+  ADD COLUMN IF NOT EXISTS retry_count int NOT NULL DEFAULT 0;
+
+ALTER TABLE biz_compensation_task
+  ADD COLUMN IF NOT EXISTS next_retry_at timestamptz;
+
+ALTER TABLE biz_compensation_task
+  ADD COLUMN IF NOT EXISTS last_error varchar(1000);
+
+ALTER TABLE biz_compensation_task
   ADD COLUMN IF NOT EXISTS updated_at timestamptz;
 
 CREATE INDEX IF NOT EXISTS idx_compensation_status_retry

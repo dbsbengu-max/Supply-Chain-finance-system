@@ -24,6 +24,12 @@ export interface OutboxEventItem {
   updated_at?: string
 }
 
+export interface OutboxEventDetail extends OutboxEventItem {
+  idempotency_key?: string
+  payload_json?: string
+  related_route?: string
+}
+
 export interface CompensationTaskItem {
   id: string
   compensation_type: string
@@ -37,6 +43,12 @@ export interface CompensationTaskItem {
   executed_at?: string
   created_at?: string
   updated_at?: string
+}
+
+export interface CompensationTaskDetail extends CompensationTaskItem {
+  source_event_id?: string
+  action_json?: string
+  related_route?: string
 }
 
 export interface SagaOpsFilterMeta {
@@ -67,6 +79,11 @@ export async function listOutboxEvents(params?: {
   return res.data
 }
 
+export async function getOutboxEventDetail(id: string) {
+  const res = await http.get(`/saga/ops/outbox/${id}`)
+  return res.data
+}
+
 export async function listCompensationTasks(params?: {
   page_no?: number
   page_size?: number
@@ -79,17 +96,22 @@ export async function listCompensationTasks(params?: {
   return res.data
 }
 
-export async function retryOutboxEvent(id: string) {
-  const res = await http.post(`/saga/ops/outbox/${id}/retry`)
+export async function getCompensationTaskDetail(id: string) {
+  const res = await http.get(`/saga/ops/compensation-tasks/${id}`)
   return res.data
 }
 
-export async function retryCompensationTask(id: string) {
-  const res = await http.post(`/saga/ops/compensation-tasks/${id}/retry`)
+export async function retryOutboxEvent(id: string, reason: string) {
+  const res = await http.post(`/saga/ops/outbox/${id}/retry`, { reason })
   return res.data
 }
 
-export async function approveCompensationTask(id: string) {
-  const res = await http.post(`/saga/ops/compensation-tasks/${id}/approve-execute`)
+export async function retryCompensationTask(id: string, reason: string) {
+  const res = await http.post(`/saga/ops/compensation-tasks/${id}/retry`, { reason })
+  return res.data
+}
+
+export async function approveCompensationTask(id: string, reason: string) {
+  const res = await http.post(`/saga/ops/compensation-tasks/${id}/approve-execute`, { reason })
   return res.data
 }

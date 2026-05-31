@@ -153,6 +153,7 @@ class BankChannelCallbackIntegrationTest {
     private void resetFinanceForBankTest() {
         jdbcTemplate.update("DELETE FROM acct_bank_flow WHERE source_id IN (SELECT id FROM fn_disbursement WHERE finance_id = 'FIN_BANK_OK')");
         jdbcTemplate.update("DELETE FROM fn_disbursement WHERE finance_id = 'FIN_BANK_OK'");
+        jdbcTemplate.update("DELETE FROM biz_event_outbox WHERE business_type = 'FINANCE_APPLICATION' AND business_id = 'FIN_BANK_OK'");
         jdbcTemplate.update(
                 "DELETE FROM idempotency_record WHERE idempotency_key LIKE 'BANK-CB-%' OR idempotency_key LIKE 'BANK-DISB-%'");
         jdbcTemplate.update("UPDATE fn_finance_application SET finance_status = 'TO_DISBURSE', disbursed_amount = 0 WHERE id = 'FIN_BANK_OK'");

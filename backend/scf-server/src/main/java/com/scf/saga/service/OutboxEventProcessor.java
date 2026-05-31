@@ -64,11 +64,12 @@ public class OutboxEventProcessor {
             event.setLastError(ex.getMessage());
             if (retry >= RETRY_MINUTES.length) {
                 event.setEventStatus("MANUAL_REQUIRED");
+                AuditContext context = auditContext(event);
                 auditLogService.logAsSystem(
                         "system",
-                        null,
-                        null,
-                        null,
+                        context.operatorId(),
+                        context.enterpriseId(),
+                        context.projectId(),
                         "SAGA_COMPENSATE",
                         event.getBusinessType(),
                         event.getBusinessId(),
@@ -105,11 +106,12 @@ public class OutboxEventProcessor {
         event.setLastError(error);
         if (retry >= RETRY_MINUTES.length) {
             event.setEventStatus("MANUAL_REQUIRED");
+            AuditContext context = auditContext(event);
             auditLogService.logAsSystem(
                     "system",
-                    null,
-                    null,
-                    null,
+                    context.operatorId(),
+                    context.enterpriseId(),
+                    context.projectId(),
                     "SAGA_COMPENSATE",
                     event.getBusinessType(),
                     event.getBusinessId(),
@@ -124,6 +126,21 @@ public class OutboxEventProcessor {
         } else {
             event.setEventStatus("FAILED");
             event.setNextRetryAt(Instant.now().plus(RETRY_MINUTES[retry - 1], ChronoUnit.MINUTES));
+        }
+    }
+
+    private AuditContext auditContext(BizEventOutbox event) {
+        if ("AGENCY_PURCHASE".equals(event.getBusinessType())) {
+            return agencyPurchaseApplicationRepository.findById(event.getBusinessId())
+                    .map(app -> new AuditContext(app.getOperatorId(), null, app.getProjectId()))
+                    .orElseGet(AuditContext::fallback);
+        }
+        return AuditContext.fallback();
+    }
+
+    private record AuditContext(String operatorId, String enterpriseId, String projectId) {
+        static AuditContext fallback() {
+            return new AuditContext("OP001", null, null);
         }
     }
 }

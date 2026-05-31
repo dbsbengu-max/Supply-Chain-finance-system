@@ -3,6 +3,8 @@ backend/scf-server/target/
 backend/**/target/
 frontend/scf-web/node_modules/
 frontend/scf-web/dist/
+frontend/scf-web/*.tsbuildinfo
+**/tsconfig.tsbuildinfo
 
 # IDE / OS
 .idea/
@@ -18,3 +20,4 @@ Thumbs.db
 
 # Test artifacts
 backend/scf-server/target/cp-jars/
+backend/scf-server/data/uploads/

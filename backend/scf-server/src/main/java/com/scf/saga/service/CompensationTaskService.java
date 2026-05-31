@@ -9,6 +9,7 @@ import com.scf.saga.entity.BizCompensationTask;
 import com.scf.saga.entity.BizEventOutbox;
 import com.scf.saga.repository.BizCompensationTaskRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -57,9 +58,10 @@ public class CompensationTaskService {
         return repository.save(task);
     }
 
-    @Transactional
-    public void manualRetry(String taskId) {
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void manualRetry(String taskId, String reason) {
         tenantContext.requirePermission("SAGA_OPS_MANAGE");
+        requireManualReason(reason);
         BizCompensationTask task = requireTask(taskId);
         if (!RETRYABLE.contains(task.getCompensationStatus())) {
             throw new BusinessException("SAGA_409", "当前补偿任务状态不可重试: " + task.getCompensationStatus(), 409);
@@ -76,13 +78,14 @@ public class CompensationTaskService {
                 task.getBusinessType(),
                 task.getBusinessId(),
                 before,
-                snapshot(task));
+                snapshotWithReason(task, reason));
         processor.process(taskId);
     }
 
-    @Transactional
-    public void approveAndExecute(String taskId) {
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void approveAndExecute(String taskId, String reason) {
         tenantContext.requirePermission("SAGA_OPS_MANAGE");
+        requireManualReason(reason);
         BizCompensationTask task = requireTask(taskId);
         if (!"MANUAL_REQUIRED".equals(task.getCompensationStatus())) {
             throw new BusinessException("SAGA_409", "仅 MANUAL_REQUIRED 状态可批准执行", 409);
@@ -101,8 +104,26 @@ public class CompensationTaskService {
                 task.getBusinessType(),
                 task.getBusinessId(),
                 before,
-                snapshot(task));
+                snapshotWithReason(task, reason));
         processor.process(taskId);
+    }
+
+    private static void requireManualReason(String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new BusinessException("VALID_400", "人工操作原因不能为空", 400);
+        }
+        if (reason.trim().length() < 5) {
+            throw new BusinessException("VALID_400", "人工操作原因至少 5 个字符", 400);
+        }
+    }
+
+    private static Map<String, Object> snapshotWithReason(BizCompensationTask task, String reason) {
+        return Map.of(
+                "task_id", task.getId(),
+                "compensation_type", task.getCompensationType(),
+                "compensation_status", task.getCompensationStatus(),
+                "retry_count", task.getRetryCount(),
+                "manual_reason", reason.trim());
     }
 
     BizCompensationTask requireTask(String taskId) {
