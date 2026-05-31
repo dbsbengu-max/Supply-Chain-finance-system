@@ -1,5 +1,9 @@
 package com.scf.saga.service;
 
+import com.scf.audit.service.AuditLogService;
+import com.scf.common.exception.BusinessException;
+import com.scf.common.security.SecurityUtils;
+import com.scf.common.security.TenantContext;
 import com.scf.common.util.IdGenerator;
 import com.scf.saga.entity.BizCompensationTask;
 import com.scf.saga.entity.BizEventOutbox;
@@ -8,14 +12,28 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class CompensationTaskService {
 
-    private final BizCompensationTaskRepository repository;
+    private static final Set<String> RETRYABLE = Set.of("FAILED", "MANUAL_REQUIRED");
 
-    public CompensationTaskService(BizCompensationTaskRepository repository) {
+    private final BizCompensationTaskRepository repository;
+    private final CompensationTaskProcessor processor;
+    private final TenantContext tenantContext;
+    private final AuditLogService auditLogService;
+
+    public CompensationTaskService(
+            BizCompensationTaskRepository repository,
+            CompensationTaskProcessor processor,
+            TenantContext tenantContext,
+            AuditLogService auditLogService) {
         this.repository = repository;
+        this.processor = processor;
+        this.tenantContext = tenantContext;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
@@ -33,7 +51,70 @@ public class CompensationTaskService {
         task.setBusinessId(businessId);
         task.setCompensationStatus("PENDING");
         task.setActionJson(actionJson);
+        task.setRetryCount(0);
         task.setCreatedAt(Instant.now());
+        task.setUpdatedAt(Instant.now());
         return repository.save(task);
+    }
+
+    @Transactional
+    public void manualRetry(String taskId) {
+        tenantContext.requirePermission("SAGA_OPS_MANAGE");
+        BizCompensationTask task = requireTask(taskId);
+        if (!RETRYABLE.contains(task.getCompensationStatus())) {
+            throw new BusinessException("SAGA_409", "当前补偿任务状态不可重试: " + task.getCompensationStatus(), 409);
+        }
+        Map<String, Object> before = snapshot(task);
+        task.setCompensationStatus("PENDING");
+        task.setRetryCount(0);
+        task.setNextRetryAt(null);
+        task.setLastError(null);
+        task.setUpdatedAt(Instant.now());
+        repository.save(task);
+        auditLogService.log(
+                "SAGA_COMPENSATION_RETRY",
+                task.getBusinessType(),
+                task.getBusinessId(),
+                before,
+                snapshot(task));
+        processor.process(taskId);
+    }
+
+    @Transactional
+    public void approveAndExecute(String taskId) {
+        tenantContext.requirePermission("SAGA_OPS_MANAGE");
+        BizCompensationTask task = requireTask(taskId);
+        if (!"MANUAL_REQUIRED".equals(task.getCompensationStatus())) {
+            throw new BusinessException("SAGA_409", "仅 MANUAL_REQUIRED 状态可批准执行", 409);
+        }
+        String operator = SecurityUtils.currentUserId();
+        Map<String, Object> before = snapshot(task);
+        task.setApprovedBy(operator);
+        task.setCompensationStatus("PENDING");
+        task.setRetryCount(0);
+        task.setNextRetryAt(null);
+        task.setLastError(null);
+        task.setUpdatedAt(Instant.now());
+        repository.save(task);
+        auditLogService.log(
+                "SAGA_COMPENSATION_APPROVE",
+                task.getBusinessType(),
+                task.getBusinessId(),
+                before,
+                snapshot(task));
+        processor.process(taskId);
+    }
+
+    BizCompensationTask requireTask(String taskId) {
+        return repository.findById(taskId)
+                .orElseThrow(() -> new BusinessException("DATA_404", "补偿任务不存在", 404));
+    }
+
+    private static Map<String, Object> snapshot(BizCompensationTask task) {
+        return Map.of(
+                "task_id", task.getId(),
+                "compensation_type", task.getCompensationType(),
+                "compensation_status", task.getCompensationStatus(),
+                "retry_count", task.getRetryCount());
     }
 }

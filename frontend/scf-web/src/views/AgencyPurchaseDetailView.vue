@@ -118,6 +118,8 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="retry_count" label="重试" width="72" />
+        <el-table-column prop="last_error" label="最近错误" min-width="160" show-overflow-tooltip />
         <el-table-column prop="created_at" label="创建时间" width="180" />
         <el-table-column prop="executed_at" label="执行时间" width="180" />
       </el-table>

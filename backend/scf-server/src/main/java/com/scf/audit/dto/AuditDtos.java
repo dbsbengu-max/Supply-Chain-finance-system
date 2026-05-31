@@ -109,7 +109,11 @@ public final class AuditDtos {
                 Map.entry("TRANSFER", "凭证流转"),
                 Map.entry("REDEEM_APPLY", "兑付申请"),
                 Map.entry("VOUCHER_RELEASE", "凭证融资释放"),
-                Map.entry("SAGA_COMPENSATE", "Saga 补偿"));
+                Map.entry("SAGA_COMPENSATE", "Saga 补偿"),
+                Map.entry("SAGA_OUTBOX_RETRY", "Outbox 人工重试"),
+                Map.entry("SAGA_COMPENSATION_RETRY", "补偿任务人工重试"),
+                Map.entry("SAGA_COMPENSATION_APPROVE", "补偿任务批准执行"),
+                Map.entry("SAGA_COMPENSATION_MANUAL", "补偿任务转人工"));
     }
 
     public static Map<String, String> objectTypeLabels() {

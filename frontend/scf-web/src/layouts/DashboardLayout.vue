@@ -6,6 +6,7 @@
         <el-menu-item index="/">工作台</el-menu-item>
         <el-menu-item v-if="canViewInbox" index="/inbox">消息待办</el-menu-item>
         <el-menu-item v-if="canViewAudit" index="/audit/logs">审计日志</el-menu-item>
+        <el-menu-item v-if="canViewSagaOps" index="/saga/ops">Saga 监控</el-menu-item>
         <el-menu-item index="/customers">客户/KYC</el-menu-item>
         <el-menu-item index="/projects">项目配置</el-menu-item>
         <el-menu-item index="/trade/orders">订单贸易</el-menu-item>
@@ -54,6 +55,7 @@ const canViewBi = computed(() => hasPermission('BI_VIEW'))
 const canViewRiskAlerts = computed(() => hasPermission('RISK_ALERT_VIEW'))
 const canViewInbox = computed(() => hasPermission('INBOX_VIEW'))
 const canViewAudit = computed(() => hasPermission('AUDIT_VIEW'))
+const canViewSagaOps = computed(() => hasPermission('SAGA_OPS_VIEW'))
 const canViewVouchers = computed(() => hasPermission('VOUCHER_VIEW'))
 
 function logout() {

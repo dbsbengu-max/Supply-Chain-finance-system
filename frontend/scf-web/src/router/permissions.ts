@@ -18,6 +18,7 @@ export const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
   'risk-alerts': 'RISK_ALERT_VIEW',
   'inbox-center': 'INBOX_VIEW',
   'audit-center': 'AUDIT_VIEW',
+  'saga-ops': 'SAGA_OPS_VIEW',
   'voucher-list': 'VOUCHER_VIEW',
   'voucher-detail': 'VOUCHER_VIEW'
 }

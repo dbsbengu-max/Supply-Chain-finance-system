@@ -40,6 +40,9 @@ export interface AgencyPurchaseCompensationTask {
   id: string
   compensation_type: string
   compensation_status: string
+  retry_count?: number
+  next_retry_at?: string
+  last_error?: string
   created_at?: string
   executed_at?: string
 }

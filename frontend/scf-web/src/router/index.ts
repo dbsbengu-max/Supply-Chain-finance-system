@@ -25,6 +25,7 @@ import BiDashboardView from '../views/BiDashboardView.vue'
 import RiskAlertCenterView from '../views/RiskAlertCenterView.vue'
 import InboxCenterView from '../views/InboxCenterView.vue'
 import AuditCenterView from '../views/AuditCenterView.vue'
+import SagaOpsCenterView from '../views/SagaOpsCenterView.vue'
 import VoucherListView from '../views/VoucherListView.vue'
 import VoucherDetailView from '../views/VoucherDetailView.vue'
 import ForbiddenView from '../views/ForbiddenView.vue'
@@ -57,6 +58,7 @@ const router = createRouter({
         { path: 'risk/alerts', name: 'risk-alerts', component: RiskAlertCenterView },
         { path: 'inbox', name: 'inbox-center', component: InboxCenterView },
         { path: 'audit/logs', name: 'audit-center', component: AuditCenterView },
+        { path: 'saga/ops', name: 'saga-ops', component: SagaOpsCenterView },
         { path: 'forbidden', name: 'forbidden', component: ForbiddenView },
         { path: 'pricing', name: 'pricing', component: PricingView },
         { path: 'ai/ocr', name: 'ai-ocr', component: OcrCenterView },

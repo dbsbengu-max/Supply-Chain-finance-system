@@ -102,8 +102,10 @@ const COMPENSATION_TYPE_LABELS: Record<string, string> = {
 
 const COMPENSATION_STATUS_LABELS: Record<string, string> = {
   PENDING: '待执行',
+  PROCESSING: '执行中',
   SUCCESS: '成功',
-  FAILED: '失败'
+  FAILED: '失败',
+  MANUAL_REQUIRED: '待人工'
 }
 
 export function agencyPurchaseSagaStatusLabel(code: string | undefined) {
@@ -143,7 +145,7 @@ export function agencyPurchaseCompensationStatusLabel(code: string) {
 
 export function compensationStatusTagType(status: string): 'success' | 'danger' | 'info' | 'warning' {
   if (status === 'SUCCESS') return 'success'
-  if (status === 'FAILED') return 'danger'
-  if (status === 'PENDING') return 'warning'
+  if (status === 'FAILED' || status === 'MANUAL_REQUIRED') return 'danger'
+  if (status === 'PENDING' || status === 'PROCESSING') return 'warning'
   return 'info'
 }
