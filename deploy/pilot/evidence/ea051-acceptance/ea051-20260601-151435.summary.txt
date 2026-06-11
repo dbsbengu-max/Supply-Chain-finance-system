@@ -1,0 +1,7 @@
+EA-051 Acceptance Report
+Timestamp: 2026-06-01T15:14:51.5744432+08:00
+Repo: E:\cursor\BR PT\供应链金融管理系统
+
+PASS  PostgreSQL :5432
+PASS  GET http://127.0.0.1:8080/api/v1/actuator/health -> UP
+FAIL  mvn test-compile

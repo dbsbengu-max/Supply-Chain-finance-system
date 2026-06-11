@@ -1,0 +1,7 @@
+﻿EA-051 Acceptance Report
+Timestamp: 2026-06-01T13:52:11.7017478+08:00
+Repo: E:\cursor\BR PT\供应链金融管理系统
+
+PASS  PostgreSQL :5432
+PASS  GET http://127.0.0.1:8080/api/v1/actuator/health -> UP
+FAIL  EA019RegressionRunner exit 1 (see E:\cursor\BR PT\供应链金融管理系统\backend\scf-server\ea051-regression-20260601-135033.log)
