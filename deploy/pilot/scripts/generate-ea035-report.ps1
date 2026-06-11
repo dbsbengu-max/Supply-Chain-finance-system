@@ -48,17 +48,17 @@ if ($watchLog) {
 $gitRev = try { (git -C $RepoRoot rev-parse --short HEAD 2>$null).Trim() } catch { "unknown" }
 $gitBranch = try { (git -C $RepoRoot branch --show-current 2>$null).Trim() } catch { "unknown" }
 
-$goNoGo = if ($gateResult -eq "PASS" -and ($cumFail -eq "0" -or $cumFail -eq "n/a")) { "**Go（待三方签字）**" } else { "**No-Go（待修复）**" }
+$goNoGo = if ($gateResult -eq "PASS" -and ($cumFail -eq "0" -or $cumFail -eq "n/a")) { "**Go (pending sign-off)**" } else { "**No-Go (fix required)**" }
 
 if (-not $CodexVerdict) {
-    $CodexVerdict = if ($gateResult -eq "PASS") { "待 Codex 独立复核" } else { "BLOCKED — staging-gate 未 PASS，先修复再复核" }
+    $CodexVerdict = if ($gateResult -eq "PASS") { "pending Codex review" } else { "BLOCKED - staging-gate not PASS" }
 }
 if (-not $CodexBacklog) {
     $CodexBacklog = @(
-        "- A-03：staging 跑闸后核对 biz_event_outbox FAILED=0、stale>30m=0",
-        "- A-04：核对 biz_compensation_task MANUAL_REQUIRED=0",
-        "- Flyway：确认 >= 1.1.027，sys_seed_manifest 含 FULL 回填",
-        "- 权限：platform_admin 含 SAGA_OPS_* / AUDIT_VIEW / INBOX_VIEW / RISK_ALERT_VIEW（需 1.1.020+）"
+        '- A-03: biz_event_outbox FAILED=0, stale over 30m=0',
+        '- A-04: biz_compensation_task MANUAL_REQUIRED=0',
+        '- Flyway: >= 1.1.027, sys_seed_manifest FULL backfill',
+        '- Permissions: platform_admin has SAGA_OPS_*, AUDIT_VIEW, INBOX_VIEW, RISK_ALERT_VIEW'
     ) -join "`n"
 }
 

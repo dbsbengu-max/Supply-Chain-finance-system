@@ -19,4 +19,4 @@ SELECT 'V1_1_004', 'FULL', 'V1_1_004__seed_mock_data.sql', 'flyway'
 WHERE EXISTS (
     SELECT 1 FROM flyway_schema_history WHERE version = '1.1.004' AND success = true
 )
-ON CONFLICT (id) DO NOTHING;
+AND NOT EXISTS (SELECT 1 FROM sys_seed_manifest WHERE id = 'V1_1_004');

@@ -5,22 +5,29 @@
       <el-menu :default-active="active" router>
         <el-menu-item index="/">工作台</el-menu-item>
         <el-menu-item index="/pilot/closure">试点闭环</el-menu-item>
-        <el-menu-item v-if="canViewInbox" index="/inbox">消息待办</el-menu-item>
-        <el-menu-item v-if="canViewAudit" index="/audit/logs">审计日志</el-menu-item>
-        <el-menu-item v-if="canViewSagaOps" index="/saga/ops">Saga 监控</el-menu-item>
+        <el-menu-item index="/launch/hub">功能上线</el-menu-item>
+        <el-menu-item index="/uat/acceptance">UAT 验收</el-menu-item>
+
         <el-menu-item index="/customers">客户/KYC</el-menu-item>
         <el-menu-item index="/projects">项目配置</el-menu-item>
         <el-menu-item index="/trade/orders">订单贸易</el-menu-item>
         <el-menu-item index="/agency-purchase/applications">贸易代采</el-menu-item>
-        <el-menu-item index="/warehouse/warehouses">仓库管理</el-menu-item>
         <el-menu-item index="/warehouse/inventories">库存货权</el-menu-item>
         <el-menu-item index="/finance/applications">融资管理</el-menu-item>
         <el-menu-item v-if="canViewVouchers" index="/vouchers">数字凭证</el-menu-item>
         <el-menu-item v-if="canViewBankFlows" index="/accounts/bank-flows">银行流水</el-menu-item>
         <el-menu-item v-if="canViewClearing" index="/accounts/clearing">清分中心</el-menu-item>
         <el-menu-item v-if="canViewClearingRules" index="/accounts/clearing-rules">清分规则</el-menu-item>
+
+        <el-menu-item v-if="canViewSagaOps" index="/saga/ops">补偿池</el-menu-item>
+        <el-menu-item v-if="canViewDocuments" index="/documents/center">签章中心</el-menu-item>
+        <el-menu-item v-if="canViewSignConfig" index="/integrations/contracts/sign-config">签章配置</el-menu-item>
         <el-menu-item v-if="canViewBi" index="/bi/dashboard">经营看板</el-menu-item>
+
+        <el-menu-item v-if="canViewInbox" index="/inbox">消息待办</el-menu-item>
+        <el-menu-item v-if="canViewAudit" index="/audit/logs">审计日志</el-menu-item>
         <el-menu-item v-if="canViewRiskAlerts" index="/risk/alerts">风险预警</el-menu-item>
+        <el-menu-item index="/warehouse/warehouses">仓库管理</el-menu-item>
         <el-menu-item index="/pricing">价格管理</el-menu-item>
         <el-menu-item index="/ai/ocr">OCR 识别</el-menu-item>
         <el-menu-item index="/imports/excel">Excel 导入</el-menu-item>
@@ -57,6 +64,8 @@ const canViewRiskAlerts = computed(() => hasPermission('RISK_ALERT_VIEW'))
 const canViewInbox = computed(() => hasPermission('INBOX_VIEW'))
 const canViewAudit = computed(() => hasPermission('AUDIT_VIEW'))
 const canViewSagaOps = computed(() => hasPermission('SAGA_OPS_VIEW'))
+const canViewDocuments = computed(() => hasPermission('DOCUMENT_VIEW'))
+const canViewSignConfig = computed(() => hasPermission('CONTRACT_SIGN_CONFIG_VIEW'))
 const canViewVouchers = computed(() => hasPermission('VOUCHER_VIEW'))
 
 function logout() {

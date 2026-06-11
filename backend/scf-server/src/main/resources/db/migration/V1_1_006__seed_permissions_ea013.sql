@@ -187,7 +187,7 @@ WITH scope_rule(id, role_id, scope_type, scope_expression, status) AS (
   ('SCOPE_WAREHOUSE', 'ROLE_WAREHOUSE', 'WAREHOUSE', '{"operator":"current_operator","project":"current_project","warehouse_company":"current_enterprise"}', 'ACTIVE')
 )
 INSERT INTO sys_data_scope_rule (id, role_id, scope_type, scope_expression, status)
-SELECT id, role_id, scope_type, scope_expression, status
+SELECT id, role_id, scope_type, scope_expression::jsonb, status
 FROM scope_rule
 WHERE NOT EXISTS (
   SELECT 1 FROM sys_data_scope_rule existing

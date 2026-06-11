@@ -9,13 +9,13 @@
         <el-descriptions-item label="凭证编号">{{ detail.voucher.voucher_no }}</el-descriptions-item>
         <el-descriptions-item label="状态">{{ detail.voucher.voucher_status }}</el-descriptions-item>
         <el-descriptions-item label="币种">{{ detail.voucher.currency }}</el-descriptions-item>
-        <el-descriptions-item label="票面金额">{{ detail.voucher.amount }}</el-descriptions-item>
-        <el-descriptions-item label="可用余额">{{ detail.voucher.available_amount }}</el-descriptions-item>
+        <el-descriptions-item label="票面金额">{{ formatMoney(detail.voucher.amount, detail.voucher.currency) }}</el-descriptions-item>
+        <el-descriptions-item label="可用余额">{{ formatMoney(detail.voucher.available_amount, detail.voucher.currency) }}</el-descriptions-item>
         <el-descriptions-item label="到期日">{{ detail.voucher.due_date }}</el-descriptions-item>
         <template v-if="detail.finance_summary">
-          <el-descriptions-item label="融资占用">{{ detail.finance_summary.finance_occupied_amount }}</el-descriptions-item>
-          <el-descriptions-item label="已释放">{{ detail.finance_summary.released_amount }}</el-descriptions-item>
-          <el-descriptions-item label="待兑付">{{ detail.finance_summary.pending_redeem_amount }}</el-descriptions-item>
+          <el-descriptions-item label="融资占用">{{ formatMoney(detail.finance_summary.finance_occupied_amount, detail.voucher.currency) }}</el-descriptions-item>
+          <el-descriptions-item label="已释放">{{ formatMoney(detail.finance_summary.released_amount, detail.voucher.currency) }}</el-descriptions-item>
+          <el-descriptions-item label="待兑付">{{ formatMoney(detail.finance_summary.pending_redeem_amount, detail.voucher.currency) }}</el-descriptions-item>
         </template>
         <el-descriptions-item label="签发方">{{ detail.voucher.issuer_id }}</el-descriptions-item>
         <el-descriptions-item label="承兑方">{{ detail.voucher.acceptor_id }}</el-descriptions-item>
@@ -60,8 +60,12 @@
             <el-table-column prop="flow_type" label="类型" width="130" />
             <el-table-column prop="from_holder_id" label="转出方" width="150" />
             <el-table-column prop="to_holder_id" label="转入方" width="150" />
-            <el-table-column prop="amount" label="金额" width="120" />
-            <el-table-column prop="after_available_amount" label="操作后余额" width="130" />
+            <el-table-column label="金额" width="140">
+              <template #default="{ row }">{{ formatMoney(row.amount, detail?.voucher.currency) }}</template>
+            </el-table-column>
+            <el-table-column label="操作后余额" width="150">
+              <template #default="{ row }">{{ formatMoney(row.after_available_amount, detail?.voucher.currency) }}</template>
+            </el-table-column>
             <el-table-column prop="operated_by" label="操作人" width="120" />
             <el-table-column prop="operated_at" label="时间" min-width="180" />
           </el-table>
@@ -71,17 +75,24 @@
             <el-table-column prop="finance_no" label="融资编号" width="160" />
             <el-table-column prop="finance_status" label="状态" width="120" />
             <el-table-column prop="product_type" label="产品类型" width="140" />
-            <el-table-column prop="disbursed_amount" label="已放款" width="120" />
-            <el-table-column prop="currency" label="币种" width="80" />
+            <el-table-column label="已放款" width="140">
+              <template #default="{ row }">{{ formatMoney(row.disbursed_amount, row.currency) }}</template>
+            </el-table-column>
           </el-table>
         </el-tab-pane>
         <el-tab-pane label="还款/清分流水" name="clearing">
           <el-table :data="detail.clearing_records ?? []" stripe>
             <el-table-column prop="repayment_id" label="还款单" width="140" />
             <el-table-column prop="finance_id" label="融资单" width="140" />
-            <el-table-column prop="repayment_amount" label="还款金额" width="120" />
-            <el-table-column prop="principal_amount" label="本金" width="100" />
-            <el-table-column prop="interest_amount" label="利息" width="100" />
+            <el-table-column label="还款金额" width="140">
+              <template #default="{ row }">{{ formatMoney(row.repayment_amount, detail?.voucher.currency) }}</template>
+            </el-table-column>
+            <el-table-column label="本金" width="120">
+              <template #default="{ row }">{{ formatMoney(row.principal_amount, detail?.voucher.currency) }}</template>
+            </el-table-column>
+            <el-table-column label="利息" width="120">
+              <template #default="{ row }">{{ formatMoney(row.interest_amount, detail?.voucher.currency) }}</template>
+            </el-table-column>
             <el-table-column prop="clearing_status" label="清分状态" width="120" />
             <el-table-column prop="created_at" label="时间" min-width="180" />
           </el-table>
@@ -91,7 +102,9 @@
             <el-table-column prop="flow_type" label="类型" width="130" />
             <el-table-column prop="from_holder_id" label="转出方" width="150" />
             <el-table-column prop="to_holder_id" label="转入方" width="150" />
-            <el-table-column prop="amount" label="金额" width="120" />
+            <el-table-column label="金额" width="140">
+              <template #default="{ row }">{{ formatMoney(row.amount, detail?.voucher.currency) }}</template>
+            </el-table-column>
             <el-table-column prop="operated_by" label="操作人" width="120" />
             <el-table-column prop="operated_at" label="时间" min-width="180" />
           </el-table>
@@ -142,6 +155,8 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { usePermission } from '../composables/usePermission'
+import { apiErrorMessage } from '../utils/apiError'
+import { formatMoney } from '../utils/format'
 import {
   cancelVoucher,
   getVoucher,
@@ -176,8 +191,9 @@ const executeForm = reactive({
 })
 
 async function load() {
-  const res = await getVoucher(route.params.id as string)
-  if (res.success) {
+  try {
+    const res = await getVoucher(route.params.id as string)
+    if (!res.success) throw new Error(res.message || '加载凭证失败')
     detail.value = {
       voucher: res.data.voucher ?? res.data,
       flows: res.data.flows ?? [],
@@ -186,6 +202,9 @@ async function load() {
       clearing_records: res.data.clearing_records ?? [],
       redeem_records: res.data.redeem_records ?? []
     }
+  } catch (e) {
+    ElMessage.error(apiErrorMessage(e, '加载凭证失败'))
+    detail.value = null
   }
 }
 
@@ -196,7 +215,7 @@ async function run(action: () => Promise<any>, success: string) {
     ElMessage.success(success)
     await load()
   } catch (e: any) {
-    ElMessage.error(e?.response?.data?.message || e.message || '操作失败')
+    ElMessage.error(apiErrorMessage(e, '操作失败'))
   }
 }
 

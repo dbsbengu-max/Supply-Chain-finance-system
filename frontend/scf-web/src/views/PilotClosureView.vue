@@ -3,9 +3,10 @@
     <div class="page-header">
       <div>
         <h2>试点闭环向导</h2>
-        <p class="subtitle">端到端主链路：客户/KYC → 代采 → BPM/Saga → 融资 → 放款 → 凭证 → 还款/清分 → 释放/兑付 → BI/审计</p>
+        <p class="subtitle">端到端主链路：客户/KYC → 代采 → 仓储货权 → BPM/Saga → 融资 → 清分 → 签章 → BI/审计</p>
       </div>
-      <el-button type="primary" @click="router.push('/saga/ops')">Saga 监控台</el-button>
+      <el-button type="primary" @click="router.push('/launch/hub')">功能上线收口</el-button>
+      <el-button @click="router.push('/saga/ops?tab=compensation')">补偿池</el-button>
     </div>
 
     <el-alert
@@ -75,6 +76,7 @@ import { getFinanceApplication, type FinanceApplication } from '../api/finance'
 import PilotClosureTimeline from '../components/PilotClosureTimeline.vue'
 import { usePermission } from '../composables/usePermission'
 import { buildAgencyClosureTimeline } from '../utils/pilotClosureTimeline'
+import { apiErrorMessage } from '../utils/apiError'
 
 const route = useRoute()
 const router = useRouter()
@@ -100,8 +102,8 @@ async function loadAgencyContext() {
       const fr = await getFinanceApplication(fid)
       if (fr.success && fr.data) agencyFinance.value = fr.data
     }
-  } catch (e: any) {
-    ElMessage.error(e.message || '加载试点单上下文失败')
+  } catch (e: unknown) {
+    ElMessage.error(apiErrorMessage(e, '加载试点单上下文失败'))
   } finally {
     agencyLoading.value = false
   }
@@ -132,6 +134,13 @@ const steps: PilotStep[] = [
     desc: '创建贸易代采单并提交审批',
     path: '/agency-purchase/applications',
     checks: ['保证金冻结', '库存冻结']
+  },
+  {
+    key: 'warehouse',
+    title: '仓储货权',
+    desc: '查看仓库与库存冻结/释放状态',
+    path: '/warehouse/inventories',
+    checks: ['库存冻结数量', '货权与代采关联']
   },
   {
     key: 'bpm',
@@ -172,6 +181,14 @@ const steps: PilotStep[] = [
     path: '/accounts/clearing',
     permission: 'CLEARING_VIEW',
     checks: ['清分试算', '清分 EXECUTED']
+  },
+  {
+    key: 'sign',
+    title: '合同签章',
+    desc: '单证签署与回调状态（Mock/HTTP Adapter）',
+    path: '/documents/center',
+    permission: 'DOCUMENT_VIEW',
+    checks: ['单证待签署', '回调 SUCCESS / 补偿池可查']
   },
   {
     key: 'release',

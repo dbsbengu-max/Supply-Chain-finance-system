@@ -76,6 +76,9 @@
     </el-form>
 
     <el-table :data="applications" v-loading="loading" stripe>
+      <template #empty>
+        <ListEmptyState description="暂无代采申请" action-label="新建申请" @action="goCreate" />
+      </template>
       <el-table-column prop="application_no" label="申请单号" width="180" />
       <el-table-column label="代采模式" min-width="220">
         <template #default="{ row }">
@@ -83,8 +86,9 @@
         </template>
       </el-table-column>
       <el-table-column prop="customer_id" label="客户" width="140" />
-      <el-table-column prop="total_amount" label="金额" width="120" />
-      <el-table-column prop="currency" label="币种" width="80" />
+      <el-table-column label="金额" width="160">
+        <template #default="{ row }">{{ formatMoney(row.total_amount, row.currency) }}</template>
+      </el-table-column>
       <el-table-column label="状态" width="110">
         <template #default="{ row }">
           {{ agencyPurchaseStatusLabel(meta, row.application_status) }}
@@ -147,6 +151,9 @@ import {
   sagaStatusTagType
 } from '../constants/agencyPurchaseDict'
 import { usePermission } from '../composables/usePermission'
+import { formatMoney } from '../utils/format'
+import { apiErrorMessage } from '../utils/apiError'
+import ListEmptyState from '../components/ListEmptyState.vue'
 
 const router = useRouter()
 const { hasPermission } = usePermission()
@@ -187,8 +194,8 @@ async function load() {
       created_to: dateRange.value?.[1]
     })
     if (res.success) applications.value = res.data?.records || []
-  } catch (e: any) {
-    ElMessage.error(e.message || '加载失败')
+  } catch (e: unknown) {
+    ElMessage.error(apiErrorMessage(e, '加载失败'))
   } finally {
     loading.value = false
   }

@@ -17,11 +17,21 @@
     </div>
 
     <el-table v-loading="loading" :data="records" stripe>
+      <template #empty>
+        <ListEmptyState
+          description="暂无数字凭证"
+          action-label="打开试点闭环向导"
+          @action="router.push('/pilot/closure')"
+        />
+      </template>
       <el-table-column prop="voucher_no" label="凭证编号" width="170" />
       <el-table-column prop="holder_id" label="当前持有人" width="150" />
-      <el-table-column prop="amount" label="票面金额" width="130" />
-      <el-table-column prop="available_amount" label="可用余额" width="130" />
-      <el-table-column prop="currency" label="币种" width="80" />
+      <el-table-column label="票面金额" width="160">
+        <template #default="{ row }">{{ formatMoney(row.amount, row.currency) }}</template>
+      </el-table-column>
+      <el-table-column label="可用余额" width="160">
+        <template #default="{ row }">{{ formatMoney(row.available_amount, row.currency) }}</template>
+      </el-table-column>
       <el-table-column prop="voucher_status" label="状态" width="120" />
       <el-table-column prop="due_date" label="到期日" width="120" />
       <el-table-column label="操作" width="180" fixed="right">
@@ -54,8 +64,11 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
+import ListEmptyState from '../components/ListEmptyState.vue'
 import { usePermission } from '../composables/usePermission'
 import { createVoucher, issueVoucher, listVouchers, type Voucher } from '../api/voucher'
+import { apiErrorMessage } from '../utils/apiError'
+import { formatMoney } from '../utils/format'
 
 const router = useRouter()
 const { hasPermission } = usePermission()
@@ -81,8 +94,9 @@ async function load() {
     const res = await listVouchers({ page_no: 1, page_size: 50, status: status.value || undefined })
     if (!res.success) throw new Error(res.message || '加载失败')
     records.value = res.data?.records ?? []
-  } catch (e: any) {
-    ElMessage.error(e?.response?.data?.message || e.message || '加载失败')
+  } catch (e) {
+    ElMessage.error(apiErrorMessage(e, '加载凭证列表失败'))
+    records.value = []
   } finally {
     loading.value = false
   }
@@ -95,8 +109,8 @@ async function onCreate() {
     ElMessage.success('凭证已创建')
     showCreate.value = false
     await load()
-  } catch (e: any) {
-    ElMessage.error(e?.response?.data?.message || e.message || '保存失败')
+  } catch (e) {
+    ElMessage.error(apiErrorMessage(e, '保存失败'))
   }
 }
 
@@ -106,8 +120,8 @@ async function onIssue(id: string) {
     if (!res.success) throw new Error(res.message || '签发失败')
     ElMessage.success('凭证已签发')
     await load()
-  } catch (e: any) {
-    ElMessage.error(e?.response?.data?.message || e.message || '签发失败')
+  } catch (e) {
+    ElMessage.error(apiErrorMessage(e, '签发失败'))
   }
 }
 

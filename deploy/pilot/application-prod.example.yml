@@ -47,6 +47,40 @@ scf:
   bank:
     callback:
       token: ${SCF_BANK_CALLBACK_TOKEN}
+  contract:
+    sign:
+      default-provider: ${SCF_CONTRACT_SIGN_DEFAULT_PROVIDER:ESIGN_HTTP}
+      callback-token: ${SCF_CONTRACT_SIGN_CALLBACK_TOKEN}
+      max-retry-count: ${SCF_CONTRACT_SIGN_MAX_RETRY_COUNT:3}
+      callback-verification-mode: ${SCF_CONTRACT_SIGN_CALLBACK_VERIFICATION_MODE:TIMESTAMP_NONCE_SIGNATURE}
+      callback-signature-window-seconds: ${SCF_CONTRACT_SIGN_CALLBACK_SIGNATURE_WINDOW_SECONDS:300}
+      compensation-pool-enabled: ${SCF_CONTRACT_SIGN_COMPENSATION_POOL_ENABLED:true}
+      production-rollout:
+        mode: ${SCF_CONTRACT_SIGN_ROLLOUT_MODE:OFF}
+        production-provider: ${SCF_CONTRACT_SIGN_ROLLOUT_PRODUCTION_PROVIDER:ESIGN_HTTP}
+        fallback-provider: ${SCF_CONTRACT_SIGN_ROLLOUT_FALLBACK_PROVIDER:MOCK}
+        project-allowlist: ${SCF_CONTRACT_SIGN_ROLLOUT_PROJECT_ALLOWLIST:}
+        operator-allowlist: ${SCF_CONTRACT_SIGN_ROLLOUT_OPERATOR_ALLOWLIST:}
+        project-hash-percent: ${SCF_CONTRACT_SIGN_ROLLOUT_PROJECT_HASH_PERCENT:0}
+        require-http-configured: ${SCF_CONTRACT_SIGN_ROLLOUT_REQUIRE_HTTP_CONFIGURED:true}
+        block-when-misconfigured: ${SCF_CONTRACT_SIGN_ROLLOUT_BLOCK_WHEN_MISCONFIGURED:true}
+      http-provider:
+        enabled: ${SCF_CONTRACT_SIGN_HTTP_PROVIDER_ENABLED:true}
+        provider-code: ${SCF_CONTRACT_SIGN_HTTP_PROVIDER_CODE:ESIGN_HTTP}
+        display-name: ${SCF_CONTRACT_SIGN_HTTP_PROVIDER_DISPLAY_NAME:HTTP电子签章}
+        base-url: ${SCF_CONTRACT_SIGN_HTTP_BASE_URL}
+        create-path: ${SCF_CONTRACT_SIGN_HTTP_CREATE_PATH:/sign/create}
+        status-path: ${SCF_CONTRACT_SIGN_HTTP_STATUS_PATH:/sign/status/{externalSignRef}}
+        app-id: ${SCF_CONTRACT_SIGN_HTTP_APP_ID}
+        app-secret: ${SCF_CONTRACT_SIGN_HTTP_APP_SECRET}
+        outbound-auth-mode: ${SCF_CONTRACT_SIGN_HTTP_OUTBOUND_AUTH_MODE:HMAC_SHA256}
+        private-key-pem: ${SCF_CONTRACT_SIGN_HTTP_PRIVATE_KEY_PEM:}
+        public-key-pem: ${SCF_CONTRACT_SIGN_HTTP_PUBLIC_KEY_PEM:}
+        platform-trace-header: ${SCF_CONTRACT_SIGN_HTTP_PLATFORM_TRACE_HEADER:X-Request-Id}
+        vendor-request-id-header: ${SCF_CONTRACT_SIGN_HTTP_VENDOR_REQUEST_ID_HEADER:X-Vendor-Request-Id}
+        vendor-trace-id-header: ${SCF_CONTRACT_SIGN_HTTP_VENDOR_TRACE_ID_HEADER:X-Vendor-Trace-Id}
+        connect-timeout-ms: ${SCF_CONTRACT_SIGN_HTTP_CONNECT_TIMEOUT_MS:3000}
+        read-timeout-ms: ${SCF_CONTRACT_SIGN_HTTP_READ_TIMEOUT_MS:10000}
   file:
     storage-dir: ${SCF_FILE_STORAGE_DIR:/var/scf/uploads}
     storage-bucket: ${SCF_FILE_STORAGE_BUCKET:pilot}
@@ -73,5 +107,5 @@ logging:
   level:
     root: ${SCF_LOG_LEVEL_ROOT:INFO}
     com.scf: ${SCF_LOG_LEVEL_COM_SCF:INFO}
-  # External logback mount is optional. Use Spring Boot env:
-  # LOGGING_CONFIG=file:/etc/scf/logback-spring.xml
+  # External mount: file:/etc/scf/logback-spring.xml — see logging/LOGBACK_MOUNT_EVAL.md
+  config: ${SCF_LOGBACK_CONFIG:classpath:logback-spring.xml}

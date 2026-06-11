@@ -27,6 +27,7 @@ if (-not (Test-Path $EnvFile)) {
     Write-Host "FAIL  Missing $EnvFile — copy .env.staging.example to .env" -ForegroundColor Red
     exit 1
 }
+$env:SCF_PILOT_ENV_FILE = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($EnvFile)
 
 Get-Content $EnvFile | ForEach-Object {
     if ($_ -match '^\s*#' -or $_ -match '^\s*$') { return }
@@ -59,23 +60,27 @@ function Step {
 }
 
 Step "verify-pilot-seed (archive)" {
-    & (Join-Path $ScriptDir "verify-pilot-seed.ps1") -ArchiveDir $ArchiveDir
+    & (Join-Path $ScriptDir "verify-pilot-seed.ps1") -EnvFile $EnvFile -ArchiveDir $ArchiveDir
     $script:seedLogPath = Get-ChildItem -Path $ArchiveDir -Filter "seed-verify-*.log" |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty Name
 }
 
 Step "check-pilot-alerts StrictStale (once)" {
-    $alertArgs = @("-StrictStale")
-    if ($BackendUrl) { $alertArgs += @("-BackendUrl", $BackendUrl) }
-    & (Join-Path $PilotRoot "monitoring\check-pilot-alerts.ps1") @alertArgs
+    $alertParams = @{ StrictStale = $true }
+    if ($BackendUrl) { $alertParams.BackendUrl = $BackendUrl }
+    & (Join-Path $PilotRoot "monitoring\check-pilot-alerts.ps1") @alertParams
 }
 
 if (-not $SkipAlertsWatch) {
     $iterations = [Math]::Max(1, [int]($WatchMinutes / $WatchIntervalMinutes))
     Step "alerts watch ${WatchMinutes}m (StrictStale x$iterations)" {
-        $watchArgs = @("-IntervalMinutes", $WatchIntervalMinutes, "-Iterations", $iterations, "-ArchiveDir", $ArchiveDir)
-        if ($BackendUrl) { $watchArgs += @("-BackendUrl", $BackendUrl) }
-        & (Join-Path $ScriptDir "run-alerts-watch.ps1") @watchArgs
+        $watchParams = @{
+            IntervalMinutes = $WatchIntervalMinutes
+            Iterations      = $iterations
+            ArchiveDir      = $ArchiveDir
+        }
+        if ($BackendUrl) { $watchParams.BackendUrl = $BackendUrl }
+        & (Join-Path $ScriptDir "run-alerts-watch.ps1") @watchParams
         $script:watchLogPath = Get-ChildItem -Path $ArchiveDir -Filter "alerts-watch-*.log" |
             Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty Name
     }
@@ -98,8 +103,8 @@ $md = @(
     "",
     "| Artifact | File |",
     "|---|---|",
-    "| seed-verify | $(if ($seedLogPath) { $seedLogPath } else { '—' }) |",
-    "| alerts-watch | $(if ($watchLogPath) { $watchLogPath } else { '—' }) |",
+    "| seed-verify | $(if ($seedLogPath) { $seedLogPath } else { 'n/a' }) |",
+    "| alerts-watch | $(if ($watchLogPath) { $watchLogPath } else { 'n/a' }) |",
     "",
     "## Steps",
     "",

@@ -22,3 +22,7 @@ scf:
   bank:
     callback:
       token: mock-bank-callback-token
+  contract:
+    sign:
+      callback-token: mock-contract-sign-callback-token
+      callback-verification-mode: TOKEN

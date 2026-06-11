@@ -21,4 +21,25 @@ http.interceptors.request.use((config) => {
   return config
 })
 
+http.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const status = error.response?.status
+    if (status === 401) {
+      const auth = useAuthStore()
+      auth.logout()
+      const { default: router } = await import('../router')
+      const redirect = router.currentRoute.value.fullPath
+      if (!redirect.startsWith('/login')) {
+        await router.push({ path: '/login', query: { redirect } })
+      }
+    } else if (status === 403) {
+      const { default: router } = await import('../router')
+      const perm = error.response?.data?.required_permission
+      await router.push({ path: '/forbidden', query: perm ? { perm } : undefined })
+    }
+    return Promise.reject(error)
+  }
+)
+
 export default http

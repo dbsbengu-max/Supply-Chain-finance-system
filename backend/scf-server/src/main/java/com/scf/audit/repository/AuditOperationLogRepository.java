@@ -77,4 +77,14 @@ public interface AuditOperationLogRepository extends JpaRepository<AuditOperatio
             ORDER BY l.objectType
             """)
     List<String> distinctObjectTypes(@Param("operatorId") String operatorId);
+
+    @Query("""
+            SELECT l FROM AuditOperationLog l
+            WHERE l.objectType = :objectType AND l.objectId = :objectId
+            ORDER BY l.operationAt DESC
+            """)
+    List<AuditOperationLog> findByObjectTypeAndObjectIdOrderByOperationAtDesc(
+            @Param("objectType") String objectType,
+            @Param("objectId") String objectId,
+            Pageable pageable);
 }

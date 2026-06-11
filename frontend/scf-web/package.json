@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
-    "smoke": "playwright test tests/smoke --config=playwright.config.ts",
+    "smoke": "node scripts/run-smoke.mjs",
+    "smoke:direct": "playwright test tests/smoke --config=playwright.config.ts",
+    "smoke:local": "powershell -ExecutionPolicy Bypass -File scripts/run-smoke-local.ps1",
     "smoke:install": "playwright install chromium"
   },
   "dependencies": {

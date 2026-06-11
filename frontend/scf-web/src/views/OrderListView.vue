@@ -5,12 +5,16 @@
       <el-button type="primary" @click="openCreate">新建订单</el-button>
     </div>
     <el-table :data="orders" v-loading="loading" stripe>
+      <template #empty>
+        <ListEmptyState description="暂无贸易订单" />
+      </template>
       <el-table-column prop="order_no" label="订单号" width="180" />
       <el-table-column prop="order_type" label="类型" width="140" />
       <el-table-column prop="buyer_id" label="买方" width="140" />
       <el-table-column prop="seller_id" label="卖方" width="140" />
-      <el-table-column prop="total_amount" label="金额" width="120" />
-      <el-table-column prop="currency" label="币种" width="80" />
+      <el-table-column label="金额" width="160">
+        <template #default="{ row }">{{ formatMoney(row.total_amount, row.currency) }}</template>
+      </el-table-column>
       <el-table-column prop="order_status" label="状态" width="110" />
       <el-table-column label="操作" width="360">
         <template #default="{ row }">
@@ -87,6 +91,9 @@ import {
   validateBackground,
   type TradeOrder
 } from '../api/trade'
+import { formatMoney } from '../utils/format'
+import { apiErrorMessage } from '../utils/apiError'
+import ListEmptyState from '../components/ListEmptyState.vue'
 
 const loading = ref(false)
 const orders = ref<TradeOrder[]>([])
@@ -128,8 +135,8 @@ async function load() {
   try {
     const res = await listOrders({ page_no: 1, page_size: 50 })
     if (res.success) orders.value = res.data?.records || []
-  } catch (e: any) {
-    ElMessage.error(e.message || '加载失败')
+  } catch (e: unknown) {
+    ElMessage.error(apiErrorMessage(e, '加载失败'))
   } finally {
     loading.value = false
   }

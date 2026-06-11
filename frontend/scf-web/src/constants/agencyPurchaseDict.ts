@@ -96,16 +96,23 @@ const SAGA_STEP_STATUS_LABELS: Record<string, string> = {
 }
 
 const COMPENSATION_TYPE_LABELS: Record<string, string> = {
+  ORDER_ROLLBACK: '订单回滚',
   MARGIN_UNFREEZE: '保证金解冻',
-  INVENTORY_UNFREEZE: '库存解冻'
+  INVENTORY_UNFREEZE: '库存解冻',
+  CONTRACT_SIGN_CALLBACK_REVIEW: '签章回调复核'
 }
 
 const COMPENSATION_STATUS_LABELS: Record<string, string> = {
   PENDING: '待执行',
   PROCESSING: '执行中',
+  RETRYING: '重试中',
   SUCCESS: '成功',
   FAILED: '失败',
-  MANUAL_REQUIRED: '待人工'
+  MANUAL_REQUIRED: '待人工',
+  CLAIMED: '已认领',
+  APPROVED: '已审批',
+  IGNORED: '已忽略',
+  CLOSED: '已关闭'
 }
 
 export function agencyPurchaseSagaStatusLabel(code: string | undefined) {
@@ -146,6 +153,8 @@ export function agencyPurchaseCompensationStatusLabel(code: string) {
 export function compensationStatusTagType(status: string): 'success' | 'danger' | 'info' | 'warning' {
   if (status === 'SUCCESS') return 'success'
   if (status === 'FAILED' || status === 'MANUAL_REQUIRED') return 'danger'
-  if (status === 'PENDING' || status === 'PROCESSING') return 'warning'
+  if (status === 'IGNORED' || status === 'CLOSED') return 'info'
+  if (status === 'CLAIMED' || status === 'APPROVED') return 'warning'
+  if (status === 'PENDING' || status === 'PROCESSING' || status === 'RETRYING') return 'warning'
   return 'info'
 }

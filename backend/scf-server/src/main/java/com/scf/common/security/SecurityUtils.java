@@ -9,14 +9,23 @@ public final class SecurityUtils {
     }
 
     public static UserContext currentUser() {
+        UserContext user = optionalCurrentUser();
+        if (user == null) {
+            throw new com.scf.common.exception.BusinessException("AUTH_401", "未登录", 401);
+        }
+        return user;
+    }
+
+    public static UserContext optionalCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof UserContext userContext) {
             return userContext;
         }
-        throw new com.scf.common.exception.BusinessException("AUTH_401", "未登录", 401);
+        return null;
     }
 
     public static String currentUserId() {
-        return currentUser().userId();
+        UserContext user = optionalCurrentUser();
+        return user == null ? null : user.userId();
     }
 }

@@ -19,6 +19,8 @@ export const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
   'inbox-center': 'INBOX_VIEW',
   'audit-center': 'AUDIT_VIEW',
   'saga-ops': 'SAGA_OPS_VIEW',
+  'document-center': 'DOCUMENT_VIEW',
+  'contract-sign-config': 'CONTRACT_SIGN_CONFIG_VIEW',
   'voucher-list': 'VOUCHER_VIEW',
   'voucher-detail': 'VOUCHER_VIEW'
 }

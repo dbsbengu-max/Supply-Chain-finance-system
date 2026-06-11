@@ -29,7 +29,11 @@ const RiskAlertCenterView = () => import('../views/RiskAlertCenterView.vue')
 const InboxCenterView = () => import('../views/InboxCenterView.vue')
 const AuditCenterView = () => import('../views/AuditCenterView.vue')
 const SagaOpsCenterView = () => import('../views/SagaOpsCenterView.vue')
+const DocumentCenterView = () => import('../views/DocumentCenterView.vue')
+const ContractSignConfigView = () => import('../views/ContractSignConfigView.vue')
 const PilotClosureView = () => import('../views/PilotClosureView.vue')
+const LaunchHubView = () => import('../views/LaunchHubView.vue')
+const UatAcceptanceView = () => import('../views/UatAcceptanceView.vue')
 const VoucherListView = () => import('../views/VoucherListView.vue')
 const VoucherDetailView = () => import('../views/VoucherDetailView.vue')
 
@@ -61,7 +65,11 @@ const router = createRouter({
         { path: 'inbox', name: 'inbox-center', component: InboxCenterView },
         { path: 'audit/logs', name: 'audit-center', component: AuditCenterView },
         { path: 'saga/ops', name: 'saga-ops', component: SagaOpsCenterView },
+        { path: 'documents/center', name: 'document-center', component: DocumentCenterView },
+        { path: 'integrations/contracts/sign-config', name: 'contract-sign-config', component: ContractSignConfigView },
         { path: 'pilot/closure', name: 'pilot-closure', component: PilotClosureView },
+        { path: 'launch/hub', name: 'launch-hub', component: LaunchHubView },
+        { path: 'uat/acceptance', name: 'uat-acceptance', component: UatAcceptanceView },
         { path: 'forbidden', name: 'forbidden', component: ForbiddenView },
         { path: 'pricing', name: 'pricing', component: PricingView },
         { path: 'ai/ocr', name: 'ai-ocr', component: OcrCenterView },

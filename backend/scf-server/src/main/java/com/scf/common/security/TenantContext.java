@@ -58,6 +58,16 @@ public class TenantContext {
         }
     }
 
+    public void requireAnyPermission(String... permissionCodes) {
+        UserContext user = SecurityUtils.currentUser();
+        for (String code : permissionCodes) {
+            if (permissionService.hasPermission(user, code)) {
+                return;
+            }
+        }
+        throw new BusinessException("AUTH_403", "无权限", 403);
+    }
+
     private String currentRequestHeader(String name) {
         ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attrs == null) {

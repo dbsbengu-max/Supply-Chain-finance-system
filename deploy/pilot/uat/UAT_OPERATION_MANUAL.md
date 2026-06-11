@@ -33,7 +33,16 @@ $env:SMOKE_SKIP_WEBSERVER=1
 npm run smoke
 ```
 
-期望：`>>> SMOKE: PASS <<<`（6 项：登录、试点闭环、Saga、融资、清分、BI）。
+期望：`>>> SMOKE: PASS <<<`（**9 项**：登录、试点闭环、Saga、融资、清分、BI、功能上线 hub、UAT 验收页 M1/M12）。
+
+**EA-051 一键验收（推荐，含 A1–A4）：**
+
+```powershell
+cd deploy\pilot\scripts
+.\run-ea051-acceptance.ps1 -EnsureBackend
+```
+
+**页面化 UAT（M1–M12）：** http://localhost:5173/uat/acceptance — 勾选状态后可导出签字包 Markdown。
 
 ## 4. 手工 UAT 主链路（24 条）
 

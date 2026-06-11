@@ -58,21 +58,8 @@ ORDER BY installed_rank DESC
 LIMIT 5;
 
 \echo '=== 8. Seed manifest (EA-034, if V1_1_027 applied) ==='
-DO $$
-DECLARE r record;
-BEGIN
-  IF to_regclass('scf.sys_seed_manifest') IS NULL THEN
-    RAISE NOTICE 'SKIP: sys_seed_manifest not migrated — deploy backend with V1_1_027';
-    RETURN;
-  END IF;
-  FOR r IN
-    SELECT id, seed_profile, source_file, applied_at
-    FROM scf.sys_seed_manifest
-    ORDER BY applied_at DESC
-  LOOP
-    RAISE NOTICE 'manifest row: id=% profile=% file=% at=%',
-      r.id, r.seed_profile, r.source_file, r.applied_at;
-  END LOOP;
-END $$;
+SELECT id, seed_profile, source_file, applied_at
+FROM scf.sys_seed_manifest
+ORDER BY applied_at DESC;
 
 \echo '=== DONE ==='

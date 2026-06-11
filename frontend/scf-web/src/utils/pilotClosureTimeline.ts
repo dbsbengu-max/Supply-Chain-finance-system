@@ -2,6 +2,7 @@ import type { AgencyPurchaseApplication } from '../api/agencyPurchase'
 import type { FinanceApplication } from '../api/finance'
 import { financeStatusLabel } from '../constants/financeDict'
 import { agencyPurchaseSagaStatusLabel } from '../constants/agencyPurchaseDict'
+import { formatMoney } from './format'
 
 export type ClosureTimelineType = 'primary' | 'success' | 'warning' | 'danger' | 'info'
 
@@ -100,6 +101,36 @@ function financeNode(app: AgencyPurchaseApplication, finance?: FinanceApplicatio
   }
 }
 
+function warehouseNode(app: AgencyPurchaseApplication): ClosureTimelineNode {
+  const approved = app.application_status === 'APPROVED' || app.saga_status === 'SUCCESS'
+  return {
+    key: 'warehouse',
+    title: '仓储货权',
+    type: approved ? 'success' : app.application_status === 'SUBMITTED' ? 'warning' : 'info',
+    description: approved
+      ? '审批/Saga 通过后核对库存冻结与货权'
+      : '代采审批通过后冻结库存',
+    route: '/warehouse/inventories',
+    routeLabel: '库存货权'
+  }
+}
+
+function signNode(finance?: FinanceApplication | null): ClosureTimelineNode {
+  const canSign =
+    finance?.finance_status &&
+    ['DISBURSED', 'REPAYING', 'OVERDUE', 'SETTLED'].includes(finance.finance_status)
+  return {
+    key: 'sign',
+    title: '合同签章',
+    type: canSign ? 'warning' : 'info',
+    description: canSign
+      ? '单证中心发起签署（Mock/HTTP Adapter）'
+      : '放款后可发起合同/单证签署',
+    route: '/documents/center',
+    routeLabel: '签章中心'
+  }
+}
+
 function downstreamNode(finance?: FinanceApplication | null): ClosureTimelineNode[] {
   const fid = finance?.id
   const st = finance?.finance_status
@@ -126,6 +157,7 @@ function downstreamNode(finance?: FinanceApplication | null): ClosureTimelineNod
       route: fid ? `/accounts/clearing?finance_id=${fid}` : '/accounts/clearing',
       routeLabel: '清分中心'
     },
+    signNode(finance),
     {
       key: 'bi',
       title: 'BI / 审计',
@@ -147,12 +179,13 @@ export function buildAgencyClosureTimeline(
       key: 'create',
       title: '代采申请',
       type: createType,
-      description: `${app.application_no} · ${app.total_amount} ${app.currency}`,
+      description: `${app.application_no} · ${formatMoney(app.total_amount, app.currency)}`,
       timestamp: app.created_at,
       route: `/agency-purchase/applications/${app.id}`,
       routeLabel: '当前详情'
     },
     bpmNode(app),
+    warehouseNode(app),
     sagaNode(app),
     financeNode(app, finance),
     ...downstreamNode(finance)

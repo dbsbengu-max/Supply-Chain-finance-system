@@ -7,10 +7,14 @@
           <el-button type="primary" @click="showPrice = true">录入价格</el-button>
         </div>
         <el-table :data="prices" v-loading="loadingPrices" stripe>
+          <template #empty>
+            <ListEmptyState description="暂无价格记录" />
+          </template>
           <el-table-column prop="sku_id" label="SKU" width="140" />
           <el-table-column prop="price_date" label="日期" width="120" />
-          <el-table-column prop="price" label="价格" width="120" />
-          <el-table-column prop="currency" label="币种" width="80" />
+          <el-table-column label="价格" width="140">
+            <template #default="{ row }">{{ formatMoney(row.price, row.currency) }}</template>
+          </el-table-column>
           <el-table-column prop="unit" label="单位" width="80" />
           <el-table-column prop="review_status" label="审核状态" width="110" />
           <el-table-column label="操作" width="180">
@@ -23,6 +27,9 @@
       </el-tab-pane>
       <el-tab-pane label="汇率" name="fx">
         <el-table :data="fxRates" v-loading="loadingFx" stripe>
+          <template #empty>
+            <ListEmptyState description="暂无汇率记录" />
+          </template>
           <el-table-column prop="base_currency" label="基准币" width="100" />
           <el-table-column prop="quote_currency" label="报价币" width="100" />
           <el-table-column prop="rate" label="汇率" />
@@ -73,6 +80,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import ListEmptyState from '../components/ListEmptyState.vue'
 import {
   approvePrice,
   createPrice,
@@ -83,6 +91,8 @@ import {
   type FxRate,
   type PriceRecord
 } from '../api/pricing'
+import { apiErrorMessage } from '../utils/apiError'
+import { formatMoney } from '../utils/format'
 
 const tab = ref('prices')
 const loadingPrices = ref(false)
@@ -105,7 +115,11 @@ async function loadPrices() {
   loadingPrices.value = true
   try {
     const res = await listPrices({ page_no: 1, page_size: 50 })
-    if (res.success) prices.value = res.data?.records || []
+    if (!res.success) throw new Error(res.message || '加载价格失败')
+    prices.value = res.data?.records || []
+  } catch (e) {
+    ElMessage.error(apiErrorMessage(e, '加载价格失败'))
+    prices.value = []
   } finally {
     loadingPrices.value = false
   }
@@ -115,42 +129,56 @@ async function loadFx() {
   loadingFx.value = true
   try {
     const res = await listFxRates({ page_no: 1, page_size: 50 })
-    if (res.success) fxRates.value = res.data?.records || []
+    if (!res.success) throw new Error(res.message || '加载汇率失败')
+    fxRates.value = res.data?.records || []
+  } catch (e) {
+    ElMessage.error(apiErrorMessage(e, '加载汇率失败'))
+    fxRates.value = []
   } finally {
     loadingFx.value = false
   }
 }
 
 async function loadSkus() {
-  const res = await listSkus()
-  if (res.success) skus.value = res.data || []
+  try {
+    const res = await listSkus()
+    if (res.success) skus.value = res.data || []
+  } catch (e) {
+    ElMessage.error(apiErrorMessage(e, '加载 SKU 失败'))
+  }
 }
 
 async function onCreatePrice() {
   try {
     const res = await createPrice(priceForm)
-    if (!res.success) throw new Error(res.message)
+    if (!res.success) throw new Error(res.message || '录入失败')
     ElMessage.success('价格已录入')
     showPrice.value = false
     await loadPrices()
-  } catch (e: any) {
-    ElMessage.error(e.message || '录入失败')
+  } catch (e) {
+    ElMessage.error(apiErrorMessage(e, '录入失败'))
   }
 }
 
 async function onSubmit(id: string) {
-  const res = await submitPrice(id)
-  if (res.success) {
+  try {
+    const res = await submitPrice(id)
+    if (!res.success) throw new Error(res.message || '提交失败')
     ElMessage.success('已提交审核')
     await loadPrices()
+  } catch (e) {
+    ElMessage.error(apiErrorMessage(e, '提交失败'))
   }
 }
 
 async function onApprove(id: string) {
-  const res = await approvePrice(id)
-  if (res.success) {
+  try {
+    const res = await approvePrice(id)
+    if (!res.success) throw new Error(res.message || '审核失败')
     ElMessage.success('审核通过')
     await loadPrices()
+  } catch (e) {
+    ElMessage.error(apiErrorMessage(e, '审核失败'))
   }
 }
 

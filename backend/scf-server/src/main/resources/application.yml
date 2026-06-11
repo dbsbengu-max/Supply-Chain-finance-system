@@ -40,6 +40,29 @@ scf:
   bank:
     callback:
       token: mock-bank-callback-token
+  contract:
+    sign:
+      default-provider: MOCK
+      callback-token: mock-contract-sign-callback-token
+      max-retry-count: 3
+      callback-verification-mode: TOKEN
+      callback-signature-window-seconds: 300
+      compensation-pool-enabled: true
+      http-provider:
+        enabled: false
+        provider-code: ESIGN_HTTP
+        display-name: HTTP电子签章
+        base-url: ''
+        create-path: /sign/create
+        status-path: /sign/status/{externalSignRef}
+        app-id: ''
+        app-secret: ''
+        outbound-auth-mode: HMAC_SHA256
+        platform-trace-header: X-Request-Id
+        vendor-request-id-header: X-Vendor-Request-Id
+        vendor-trace-id-header: X-Vendor-Trace-Id
+        connect-timeout-ms: 3000
+        read-timeout-ms: 10000
   file:
     storage-dir: ./data/uploads
     storage-bucket: local

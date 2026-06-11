@@ -34,8 +34,11 @@ function Invoke-ScfPsql {
 
     if (Get-Command psql -ErrorAction SilentlyContinue) {
         $env:PGPASSWORD = $cfg.Pass
+        $prevEap = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
         $output = & psql -h $cfg.Host -p $cfg.Port -U $cfg.User -d $cfg.Db -f $FilePath 2>&1
         $code = $LASTEXITCODE
+        $ErrorActionPreference = $prevEap
         if ($LogAppendPath) {
             $output | Tee-Object -FilePath $LogAppendPath -Append | Out-Null
         } else {

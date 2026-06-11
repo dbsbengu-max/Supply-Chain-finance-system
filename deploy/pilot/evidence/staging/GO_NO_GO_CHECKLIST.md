@@ -45,6 +45,31 @@
 | G-D3 | Rollback 方案已读并确认 | [ ] |
 | G-D4 | On-call / 升级路径已配置 | [ ] |
 
+## E. 签章供应商生产切换 EA-047（**真实生产灰度** BLOCKER；试点演示可用 Mock/HTTP Adapter）
+
+> 当前功能上线 / 试点演示：**不强制** G-E1 为真实 vendor；本地 quasi-sandbox 或 HTTP Stub 闭环即可。进入 **ALLOWLIST 生产灰度** 前须满足 G-E1～G-E5 且 EA-048 GO。
+
+| ID | 项 | 判据 | PASS | 证据 |
+|---|---|---|---|---|
+| G-E1 | EA-046 Sandbox 闭环 | verdict=PASS，含 trace/callback/补偿 | [ ] | `ea046-*.json` |
+| G-E2 | ESIGN_HTTP configured | config API `provider_connections[0].configured=true` | [ ] | gate / config.json |
+| G-E3 | 灰度路由 | `production_rollout.routed_to_production` 符合预期 | [ ] | config API |
+| G-E4 | EA-047 cutover gate | `>>> EA-047 Gate: PASS <<<` | [ ] | `run-ea047-prod-cutover-gate.ps1` |
+| G-E5 | 回滚演练 | MODE=OFF 后新单走 MOCK | [ ] | 变更记录 |
+
+## F. EA-048 真实供应商 Go/No-Go（**后置待办**，不阻塞当前功能上线 / 试点演示）
+
+> **2026-06-01 决策**：DEF-048 暂缓。当前主线为 EA-049（可演示、可测试、可试点）。本节仅在 **真实供应商生产灰度** 前为 BLOCKER；本地 Mock/HTTP Adapter 与 quasi-sandbox 证据不替代本节。
+
+| ID | 项 | 判据 | PASS | 证据 |
+|---|---|---|---|---|
+| G-F0 | 待办状态 | DEF-048 = Deferred，恢复条件已登记 | [ ] | `EA-049_功能上线优先级与后置待办登记_20260601.md` |
+| G-F1 | EA-048 编排 | `>>> EA-048: GO <<<` | [ ] | `ea048-*.json` |
+| G-F2 | 真实 vendor EA-046 | verdict=PASS，`environment≠local-quasi-sandbox` | [ ] | `ea046-*.json` |
+| G-F3 | EA-047 pre-cutover | Phase 2 PASS | [ ] | ea048 summary |
+| G-F4 | 三方签核 | Checklist E048 全 BLOCKER | [ ] | `EA-048_GoNoGo签核Checklist.md` |
+| G-F5 | ALLOWLIST 部署 | **仅 GO 后**执行 G-E048-D1～D3 | [ ] | 变更单 |
+
 ---
 
 ## 签核结论

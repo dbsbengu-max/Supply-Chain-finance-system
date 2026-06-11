@@ -66,7 +66,10 @@
             <li>✅ Saga 监控 + 人工原因审计</li>
             <li>✅ 银行流水 / 清分 / 规则</li>
             <li>✅ 风险预警 / 经营看板</li>
-            <li>⏳ 生产 remote / PR 与 UAT 签字</li>
+            <li>✅ EA-049 功能上线收口 / 补偿池 / 签章</li>
+            <li>✅ EA-050 UAT 验收入口（M1–M12）</li>
+            <li>⏳ UAT 最小集签字（Mock 环境）</li>
+            <li>⏸️ 真实 vendor / 生产灰度（EA-048 后置）</li>
           </ul>
         </el-card>
       </el-col>
@@ -93,8 +96,16 @@ const canViewInbox = computed(() => hasPermission('INBOX_VIEW'))
 
 const shortcuts = computed(() => {
   const items: Array<{ title: string; desc: string; path: string }> = [
+    { title: '功能上线', desc: '配置、补偿池、签章、BI 统一入口', path: '/launch/hub' },
+    { title: 'UAT 验收', desc: 'M1–M12 人工验收与签字包', path: '/uat/acceptance' },
     { title: '试点闭环', desc: '端到端主链路上线向导', path: '/pilot/closure' }
   ]
+  if (hasPermission('SAGA_OPS_VIEW')) {
+    items.push({ title: '补偿池', desc: 'Saga 补偿与签章回调复核', path: '/saga/ops?tab=compensation' })
+  }
+  if (hasPermission('DOCUMENT_VIEW')) {
+    items.push({ title: '签章中心', desc: '单证上传与发起签署', path: '/documents/center' })
+  }
   if (hasPermission('INBOX_VIEW')) {
     items.push({ title: '消息待办', desc: '统一事件通知流', path: '/inbox' })
   }
