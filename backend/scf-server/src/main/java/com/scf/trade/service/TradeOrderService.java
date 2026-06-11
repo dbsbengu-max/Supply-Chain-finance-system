@@ -265,6 +265,10 @@ public class TradeOrderService {
         doc.setFileId(request.fileId());
         doc.setOcrStatus("PENDING");
         doc.setValidationStatus("PENDING");
+        doc.setDocumentStatus("UPLOADED");
+        doc.setReviewStatus("NOT_REQUIRED");
+        doc.setContractStatus("NOT_CONTRACT");
+        doc.setSignStatus("NOT_REQUIRED");
         doc.setCreatedBy(SecurityUtils.currentUserId());
         doc.setCreatedAt(Instant.now());
         doc.setDeletedFlag((short) 0);
