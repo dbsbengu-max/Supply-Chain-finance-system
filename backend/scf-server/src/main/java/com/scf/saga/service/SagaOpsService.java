@@ -1,9 +1,15 @@
 package com.scf.saga.service;
 
+import com.scf.audit.entity.AuditOperationLog;
+import com.scf.audit.repository.AuditOperationLogRepository;
 import com.scf.audit.service.AuditLogService;
 import com.scf.common.dto.PageResponse;
 import com.scf.common.exception.BusinessException;
 import com.scf.common.security.TenantContext;
+import com.scf.contract.dto.ContractSignDtos.ContractSignStatusQueryView;
+import com.scf.contract.service.ContractSignReconciliationService;
+import com.scf.saga.dto.SagaOpsDtos.CompensationAuditEntryView;
+import com.scf.saga.dto.SagaOpsDtos.CompensationImpactView;
 import com.scf.saga.dto.SagaOpsDtos.CompensationTaskDetailView;
 import com.scf.saga.dto.SagaOpsDtos.CompensationTaskOpsView;
 import com.scf.saga.dto.SagaOpsDtos.OutboxEventDetailView;
@@ -14,6 +20,8 @@ import com.scf.saga.dto.SagaOpsDtos.StatusCountView;
 import com.scf.saga.entity.BizEventOutbox;
 import com.scf.saga.repository.BizCompensationTaskRepository;
 import com.scf.saga.repository.BizEventOutboxRepository;
+import com.scf.saga.support.CompensationImpactResolver;
+import com.scf.saga.support.CompensationTypes;
 import com.scf.saga.support.SagaBusinessRouteResolver;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,30 +39,43 @@ public class SagaOpsService {
     private static final List<String> OUTBOX_STATUSES = List.of(
             "PENDING", "PROCESSING", "SUCCESS", "FAILED", "MANUAL_REQUIRED");
     private static final List<String> COMPENSATION_STATUSES = List.of(
-            "PENDING", "PROCESSING", "SUCCESS", "FAILED", "MANUAL_REQUIRED");
+            "PENDING", "PROCESSING", "FAILED", "MANUAL_REQUIRED", "CLAIMED", "APPROVED",
+            "IGNORED", "CLOSED", "SUCCESS");
     private static final List<String> COMPENSATION_TYPES = List.of(
-            "MARGIN_UNFREEZE", "INVENTORY_UNFREEZE");
+            CompensationTypes.ORDER_ROLLBACK,
+            CompensationTypes.MARGIN_UNFREEZE,
+            CompensationTypes.INVENTORY_UNFREEZE,
+            CompensationTypes.CONTRACT_SIGN_CALLBACK_REVIEW);
 
     private final BizEventOutboxRepository outboxRepository;
     private final BizCompensationTaskRepository compensationTaskRepository;
     private final OutboxEventProcessor outboxEventProcessor;
     private final CompensationTaskService compensationTaskService;
+    private final CompensationImpactResolver impactResolver;
+    private final AuditOperationLogRepository auditOperationLogRepository;
     private final TenantContext tenantContext;
     private final AuditLogService auditLogService;
+    private final ContractSignReconciliationService contractSignReconciliationService;
 
     public SagaOpsService(
             BizEventOutboxRepository outboxRepository,
             BizCompensationTaskRepository compensationTaskRepository,
             OutboxEventProcessor outboxEventProcessor,
             CompensationTaskService compensationTaskService,
+            CompensationImpactResolver impactResolver,
+            AuditOperationLogRepository auditOperationLogRepository,
             TenantContext tenantContext,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            ContractSignReconciliationService contractSignReconciliationService) {
         this.outboxRepository = outboxRepository;
         this.compensationTaskRepository = compensationTaskRepository;
         this.outboxEventProcessor = outboxEventProcessor;
         this.compensationTaskService = compensationTaskService;
+        this.impactResolver = impactResolver;
+        this.auditOperationLogRepository = auditOperationLogRepository;
         this.tenantContext = tenantContext;
         this.auditLogService = auditLogService;
+        this.contractSignReconciliationService = contractSignReconciliationService;
     }
 
     @Transactional(readOnly = true)
@@ -135,8 +156,13 @@ public class SagaOpsService {
         tenantContext.requirePermission("SAGA_OPS_VIEW");
         com.scf.saga.entity.BizCompensationTask task = compensationTaskRepository.findById(taskId)
                 .orElseThrow(() -> new BusinessException("DATA_404", "补偿任务不存在", 404));
+        CompensationImpactView impact = impactResolver.resolve(task);
+        List<CompensationAuditEntryView> timeline = loadAuditTimeline(task);
         return CompensationTaskDetailView.from(
-                task, SagaBusinessRouteResolver.resolve(task.getBusinessType(), task.getBusinessId()));
+                task,
+                SagaBusinessRouteResolver.resolve(task.getBusinessType(), task.getBusinessId()),
+                impact,
+                timeline);
     }
 
     @Transactional(readOnly = true)
@@ -179,6 +205,39 @@ public class SagaOpsService {
 
     public void approveCompensationTask(String taskId, String reason) {
         compensationTaskService.approveAndExecute(taskId, reason);
+    }
+
+    public void claimCompensationTask(String taskId) {
+        compensationTaskService.claim(taskId);
+    }
+
+    public void submitCompensationApproval(String taskId, String reason) {
+        compensationTaskService.submitApproval(taskId, reason);
+    }
+
+    public void ignoreCompensationTask(String taskId, String reason) {
+        compensationTaskService.ignore(taskId, reason);
+    }
+
+    public void closeCompensationTask(String taskId, String reason) {
+        compensationTaskService.close(taskId, reason);
+    }
+
+    public ContractSignStatusQueryView queryCompensationSignStatus(String taskId, String reason) {
+        return contractSignReconciliationService.queryFromCompensationTask(taskId, reason);
+    }
+
+    private List<CompensationAuditEntryView> loadAuditTimeline(com.scf.saga.entity.BizCompensationTask task) {
+        List<AuditOperationLog> logs = auditOperationLogRepository.findByObjectTypeAndObjectIdOrderByOperationAtDesc(
+                task.getBusinessType(), task.getBusinessId(), PageRequest.of(0, 30));
+        return logs.stream()
+                .filter(log -> log.getAction() != null && log.getAction().startsWith("SAGA_COMPENSATION"))
+                .map(log -> new CompensationAuditEntryView(
+                        log.getAction(),
+                        log.getUserId(),
+                        log.getOperationAt(),
+                        log.getAfterValue()))
+                .toList();
     }
 
     private static void requireManualReason(String reason) {

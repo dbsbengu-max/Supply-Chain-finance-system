@@ -15,6 +15,7 @@ public final class SagaBusinessRouteResolver {
             case "FINANCE_APPLICATION" -> "/finance/applications";
             case "CLEARING_EXECUTION" -> "/accounts/clearing";
             case "TRADE_ORDER" -> "/trade/orders";
+            case "CONTRACT_SIGN_CALLBACK" -> "/documents/center?external_sign_ref=" + businessId;
             default -> null;
         };
     }

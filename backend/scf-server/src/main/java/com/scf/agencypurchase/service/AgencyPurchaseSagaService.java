@@ -266,6 +266,15 @@ public class AgencyPurchaseSagaService {
             List<String> completedSteps,
             String error) {
         for (String step : completedSteps) {
+            if (STEP_ORDER_CONFIRM.equals(step) && hasText(app.getOrderId())) {
+                compensationTaskService.enqueue(
+                        event,
+                        "ORDER_ROLLBACK",
+                        "AGENCY_PURCHASE",
+                        app.getId(),
+                        "{\"order_id\":\"" + app.getOrderId()
+                                + "\",\"reason\":\"" + escape(error) + "\"}");
+            }
             if (STEP_MARGIN_FREEZE.equals(step) && app.getMarginFrozenAmount() != null) {
                 compensationTaskService.enqueue(
                         event,

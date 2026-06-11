@@ -1,7 +1,6 @@
 package com.scf.saga.service;
 
 import com.scf.audit.service.AuditLogService;
-import com.scf.agencypurchase.repository.ApAgencyPurchaseApplicationRepository;
 import com.scf.saga.entity.BizCompensationTask;
 import com.scf.saga.repository.BizCompensationTaskRepository;
 import org.slf4j.Logger;
@@ -13,27 +12,29 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class CompensationTaskProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(CompensationTaskProcessor.class);
     public static final int[] RETRY_MINUTES = {1, 3, 5, 10, 30};
+    private static final Set<String> MANUAL_ONLY_BUSINESS_TYPES = Set.of("CONTRACT_SIGN_CALLBACK");
 
     private final BizCompensationTaskRepository repository;
-    private final ApAgencyPurchaseApplicationRepository applicationRepository;
     private final AgencyPurchaseCompensationHandler agencyPurchaseCompensationHandler;
     private final AuditLogService auditLogService;
+    private final com.scf.agencypurchase.repository.ApAgencyPurchaseApplicationRepository applicationRepository;
 
     public CompensationTaskProcessor(
             BizCompensationTaskRepository repository,
-            ApAgencyPurchaseApplicationRepository applicationRepository,
             AgencyPurchaseCompensationHandler agencyPurchaseCompensationHandler,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            com.scf.agencypurchase.repository.ApAgencyPurchaseApplicationRepository applicationRepository) {
         this.repository = repository;
-        this.applicationRepository = applicationRepository;
         this.agencyPurchaseCompensationHandler = agencyPurchaseCompensationHandler;
         this.auditLogService = auditLogService;
+        this.applicationRepository = applicationRepository;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = Exception.class)
@@ -41,6 +42,10 @@ public class CompensationTaskProcessor {
         BizCompensationTask task = repository.findById(taskId)
                 .orElseThrow(() -> new IllegalStateException("Compensation task missing: " + taskId));
         if (!canProcess(task)) {
+            return;
+        }
+        if (MANUAL_ONLY_BUSINESS_TYPES.contains(task.getBusinessType())) {
+            ensureManualRequired(task);
             return;
         }
         task.setCompensationStatus("PROCESSING");
@@ -66,7 +71,13 @@ public class CompensationTaskProcessor {
 
     private boolean canProcess(BizCompensationTask task) {
         String status = task.getCompensationStatus();
-        if ("SUCCESS".equals(status) || "PROCESSING".equals(status) || "MANUAL_REQUIRED".equals(status)) {
+        if ("SUCCESS".equals(status)
+                || "PROCESSING".equals(status)
+                || "MANUAL_REQUIRED".equals(status)
+                || "CLAIMED".equals(status)
+                || "APPROVED".equals(status)
+                || "IGNORED".equals(status)
+                || "CLOSED".equals(status)) {
             return false;
         }
         if ("FAILED".equals(status)) {
@@ -82,12 +93,11 @@ public class CompensationTaskProcessor {
         if (retry >= RETRY_MINUTES.length) {
             task.setCompensationStatus("MANUAL_REQUIRED");
             task.setNextRetryAt(null);
-            AuditContext context = auditContext(task);
             auditLogService.logAsSystem(
                     "system",
-                    context.operatorId(),
-                    context.enterpriseId(),
-                    context.projectId(),
+                    resolveOperatorId(task),
+                    null,
+                    resolveProjectId(task),
                     "SAGA_COMPENSATION_MANUAL",
                     task.getBusinessType(),
                     task.getBusinessId(),
@@ -105,18 +115,31 @@ public class CompensationTaskProcessor {
         }
     }
 
-    private AuditContext auditContext(BizCompensationTask task) {
+    private String resolveOperatorId(BizCompensationTask task) {
         if ("AGENCY_PURCHASE".equals(task.getBusinessType())) {
             return applicationRepository.findById(task.getBusinessId())
-                    .map(app -> new AuditContext(app.getOperatorId(), null, app.getProjectId()))
-                    .orElseGet(AuditContext::fallback);
+                    .map(com.scf.agencypurchase.entity.ApAgencyPurchaseApplication::getOperatorId)
+                    .orElse("OP001");
         }
-        return AuditContext.fallback();
+        return "OP001";
     }
 
-    private record AuditContext(String operatorId, String enterpriseId, String projectId) {
-        static AuditContext fallback() {
-            return new AuditContext("OP001", null, null);
+    private String resolveProjectId(BizCompensationTask task) {
+        if ("AGENCY_PURCHASE".equals(task.getBusinessType())) {
+            return applicationRepository.findById(task.getBusinessId())
+                    .map(com.scf.agencypurchase.entity.ApAgencyPurchaseApplication::getProjectId)
+                    .orElse(null);
         }
+        return null;
+    }
+
+    private void ensureManualRequired(BizCompensationTask task) {
+        if ("MANUAL_REQUIRED".equals(task.getCompensationStatus())) {
+            return;
+        }
+        task.setCompensationStatus("MANUAL_REQUIRED");
+        task.setNextRetryAt(null);
+        task.setUpdatedAt(Instant.now());
+        repository.save(task);
     }
 }

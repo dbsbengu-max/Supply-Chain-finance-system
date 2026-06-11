@@ -2,6 +2,7 @@ package com.scf.saga.controller;
 
 import com.scf.common.dto.ApiResponse;
 import com.scf.common.dto.PageResponse;
+import com.scf.contract.dto.ContractSignDtos.ContractSignStatusQueryView;
 import com.scf.saga.dto.SagaOpsDtos.CompensationTaskDetailView;
 import com.scf.saga.dto.SagaOpsDtos.CompensationTaskOpsView;
 import com.scf.saga.dto.SagaOpsDtos.OutboxEventDetailView;
@@ -54,7 +55,8 @@ public class SagaOpsController {
     }
 
     @GetMapping("/outbox/{id}")
-    public ApiResponse<OutboxEventDetailView> getOutboxDetail(@PathVariable String id, HttpServletRequest request) {
+    public ApiResponse<OutboxEventDetailView> getOutboxDetail(
+            @PathVariable("id") String id, HttpServletRequest request) {
         return ApiResponse.ok(sagaOpsService.getOutboxDetail(id), request.getHeader("X-Request-Id"));
     }
 
@@ -75,13 +77,13 @@ public class SagaOpsController {
 
     @GetMapping("/compensation-tasks/{id}")
     public ApiResponse<CompensationTaskDetailView> getCompensationDetail(
-            @PathVariable String id, HttpServletRequest request) {
+            @PathVariable("id") String id, HttpServletRequest request) {
         return ApiResponse.ok(sagaOpsService.getCompensationDetail(id), request.getHeader("X-Request-Id"));
     }
 
     @PostMapping("/outbox/{id}/retry")
     public ApiResponse<Void> retryOutbox(
-            @PathVariable String id,
+            @PathVariable("id") String id,
             @RequestBody SagaOpsManualRequest body,
             HttpServletRequest request) {
         sagaOpsService.retryOutbox(id, body == null ? null : body.reason());
@@ -90,7 +92,7 @@ public class SagaOpsController {
 
     @PostMapping("/compensation-tasks/{id}/retry")
     public ApiResponse<Void> retryCompensation(
-            @PathVariable String id,
+            @PathVariable("id") String id,
             @RequestBody SagaOpsManualRequest body,
             HttpServletRequest request) {
         sagaOpsService.retryCompensationTask(id, body == null ? null : body.reason());
@@ -99,10 +101,53 @@ public class SagaOpsController {
 
     @PostMapping("/compensation-tasks/{id}/approve-execute")
     public ApiResponse<Void> approveCompensation(
-            @PathVariable String id,
+            @PathVariable("id") String id,
             @RequestBody SagaOpsManualRequest body,
             HttpServletRequest request) {
         sagaOpsService.approveCompensationTask(id, body == null ? null : body.reason());
         return ApiResponse.ok(null, request.getHeader("X-Request-Id"));
+    }
+
+    @PostMapping("/compensation-tasks/{id}/claim")
+    public ApiResponse<Void> claimCompensation(@PathVariable("id") String id, HttpServletRequest request) {
+        sagaOpsService.claimCompensationTask(id);
+        return ApiResponse.ok(null, request.getHeader("X-Request-Id"));
+    }
+
+    @PostMapping("/compensation-tasks/{id}/submit-approval")
+    public ApiResponse<Void> submitCompensationApproval(
+            @PathVariable("id") String id,
+            @RequestBody SagaOpsManualRequest body,
+            HttpServletRequest request) {
+        sagaOpsService.submitCompensationApproval(id, body == null ? null : body.reason());
+        return ApiResponse.ok(null, request.getHeader("X-Request-Id"));
+    }
+
+    @PostMapping("/compensation-tasks/{id}/ignore")
+    public ApiResponse<Void> ignoreCompensation(
+            @PathVariable("id") String id,
+            @RequestBody SagaOpsManualRequest body,
+            HttpServletRequest request) {
+        sagaOpsService.ignoreCompensationTask(id, body == null ? null : body.reason());
+        return ApiResponse.ok(null, request.getHeader("X-Request-Id"));
+    }
+
+    @PostMapping("/compensation-tasks/{id}/close")
+    public ApiResponse<Void> closeCompensation(
+            @PathVariable("id") String id,
+            @RequestBody SagaOpsManualRequest body,
+            HttpServletRequest request) {
+        sagaOpsService.closeCompensationTask(id, body == null ? null : body.reason());
+        return ApiResponse.ok(null, request.getHeader("X-Request-Id"));
+    }
+
+    @PostMapping("/compensation-tasks/{id}/query-sign-status")
+    public ApiResponse<ContractSignStatusQueryView> queryCompensationSignStatus(
+            @PathVariable("id") String id,
+            @RequestBody(required = false) SagaOpsManualRequest body,
+            HttpServletRequest request) {
+        return ApiResponse.ok(
+                sagaOpsService.queryCompensationSignStatus(id, body == null ? null : body.reason()),
+                request.getHeader("X-Request-Id"));
     }
 }

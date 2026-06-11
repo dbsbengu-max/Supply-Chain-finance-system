@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -101,7 +102,8 @@ class AgencyPurchaseSagaIntegrationTest {
 
         assertEquals("FAILED", sagaStatus(id));
         assertStepStatus(id, "MARGIN_FREEZE", "FAILED");
-        assertEquals(0, compensationCount(id));
+        assertEquals(1, compensationCount(id));
+        assertNotNull(compensationTaskId(id, "ORDER_ROLLBACK"));
     }
 
     @Test
