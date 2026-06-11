@@ -1,0 +1,88 @@
+name: scf-quasi-staging
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: scf-qs-postgres
+    environment:
+      POSTGRES_DB: ${SCF_DB_NAME:-scf}
+      POSTGRES_USER: ${SCF_DB_USER:-scf}
+      POSTGRES_PASSWORD: ${SCF_DB_PASSWORD:-scf_qs_pass_20260531}
+    ports:
+      - "${QS_POSTGRES_PORT:-15432}:5432"
+    volumes:
+      - scf_qs_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SCF_DB_USER:-scf} -d ${SCF_DB_NAME:-scf}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    container_name: scf-qs-backend
+    build:
+      context: ../..
+      dockerfile: deploy/quasi-staging/backend.Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8080
+      SCF_DB_HOST: postgres
+      SCF_DB_PORT: 5432
+      SCF_DB_NAME: ${SCF_DB_NAME:-scf}
+      SCF_DB_USER: ${SCF_DB_USER:-scf}
+      SCF_DB_PASSWORD: ${SCF_DB_PASSWORD:-scf_qs_pass_20260531}
+      SCF_JWT_SECRET: ${SCF_JWT_SECRET}
+      SCF_JWT_EXPIRATION_MS: ${SCF_JWT_EXPIRATION_MS:-86400000}
+      SCF_BANK_CALLBACK_TOKEN: ${SCF_BANK_CALLBACK_TOKEN}
+      SCF_FILE_STORAGE_DIR: /var/scf/uploads
+      SCF_FILE_STORAGE_BUCKET: ${SCF_FILE_STORAGE_BUCKET:-quasi-staging-local}
+      SCF_FILE_MAX_SIZE_BYTES: ${SCF_FILE_MAX_SIZE_BYTES:-10485760}
+      SCF_OUTBOX_POLL_INTERVAL_MS: ${SCF_OUTBOX_POLL_INTERVAL_MS:-30000}
+      SCF_COMPENSATION_POLL_INTERVAL_MS: ${SCF_COMPENSATION_POLL_INTERVAL_MS:-30000}
+      SCF_IDEMPOTENCY_RETENTION_DAYS: ${SCF_IDEMPOTENCY_RETENTION_DAYS:-180}
+      SCF_LOG_LEVEL_ROOT: ${SCF_LOG_LEVEL_ROOT:-INFO}
+      SCF_LOG_LEVEL_COM_SCF: ${SCF_LOG_LEVEL_COM_SCF:-INFO}
+    ports:
+      - "${QS_BACKEND_PORT:-18080}:8080"
+    volumes:
+      - scf_qs_uploads:/var/scf/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/v1/actuator/health | grep -q 'UP'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+
+  seed-passwords:
+    image: postgres:14-alpine
+    container_name: scf-qs-seed-passwords
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${SCF_DB_PASSWORD:-scf_qs_pass_20260531}
+    volumes:
+      - ./seed/quasi_passwords.sql:/seed/quasi_passwords.sql:ro
+    command:
+      - sh
+      - -c
+      - |
+        psql -h postgres -U ${SCF_DB_USER:-scf} -d ${SCF_DB_NAME:-scf} -v ON_ERROR_STOP=1 -f /seed/quasi_passwords.sql
+    restart: "no"
+
+  web:
+    container_name: scf-qs-web
+    build:
+      context: ../..
+      dockerfile: deploy/quasi-staging/frontend.Dockerfile
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${QS_WEB_PORT:-15173}:80"
+
+volumes:
+  scf_qs_pg_data:
+  scf_qs_uploads:
