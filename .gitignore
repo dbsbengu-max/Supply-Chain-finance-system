@@ -24,6 +24,10 @@ Thumbs.db
 !**/.env.example
 !.env.staging.example
 !**/.env.staging.example
+!.env.local-prod-rehearsal.example
+!**/.env.local-prod-rehearsal.example
+!.env.*.example
+!**/.env.*.example
 
 # Staging gate evidence (generated on jump box)
 deploy/pilot/evidence/staging/*.log
@@ -34,3 +38,12 @@ deploy/pilot/evidence/staging/ACCEPTANCE_staging_*.md
 # Test artifacts
 backend/scf-server/target/cp-jars/
 backend/scf-server/data/uploads/
+
+# Runtime data (generated locally)
+frontend/scf-web/data/
+.runtime-logs/
+
+# Local business documents (not part of code repo)
+/*.pptx
+/*.docx
+/*.html
