@@ -23,6 +23,13 @@
       stripe
       :row-class-name="rowClassName"
     >
+      <template #empty>
+        <ListEmptyState
+          description="暂无融资申请"
+          action-label="打开试点闭环向导"
+          @action="router.push('/pilot/closure')"
+        />
+      </template>
       <el-table-column prop="finance_no" label="融资编号" width="180" />
       <el-table-column prop="product_type" label="产品类型" width="140" />
       <el-table-column label="来源" min-width="160">
@@ -39,8 +46,8 @@
           <span v-else>{{ row.source_id }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="申请金额" width="140">
-        <template #default="{ row }">{{ row.apply_amount }} {{ row.currency }}</template>
+      <el-table-column label="申请金额" width="160">
+        <template #default="{ row }">{{ formatMoney(row.apply_amount, row.currency) }}</template>
       </el-table-column>
       <el-table-column label="状态" width="120">
         <template #default="{ row }">
@@ -49,10 +56,18 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="280" fixed="right">
+      <el-table-column label="操作" width="360" fixed="right">
         <template #default="{ row }">
           <el-button v-if="row.finance_status === 'DRAFT'" link type="primary" @click="onSubmit(row.id)">提交</el-button>
           <el-button v-if="row.finance_status === 'SUBMITTED'" link type="success" @click="onApprove(row.id)">审批</el-button>
+          <el-button
+            v-if="row.finance_status === 'TO_DISBURSE' && canPreCheck"
+            link
+            type="primary"
+            @click="openDisburse(row)"
+          >
+            放款前校验
+          </el-button>
           <el-button
             v-if="canGoClearing(row.finance_status)"
             link
@@ -113,6 +128,66 @@
         <el-button type="primary" @click="onCreate">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-drawer v-model="showDisburse" title="放款前校验与执行" size="520px">
+      <el-form :model="disburseForm" label-width="120px">
+        <el-form-item label="融资编号">
+          <span>{{ disburseTarget?.finance_no }}</span>
+        </el-form-item>
+        <el-form-item label="放款金额" required>
+          <el-input v-model="disburseForm.disburse_amount" />
+        </el-form-item>
+        <el-form-item label="起息日" required>
+          <el-input v-model="disburseForm.value_date" placeholder="2026-06-30" />
+        </el-form-item>
+        <el-form-item label="出款账户" required>
+          <el-input v-model="disburseForm.payer_account_id" />
+        </el-form-item>
+        <el-form-item label="收款账户" required>
+          <el-input v-model="disburseForm.receiver_account_id" />
+        </el-form-item>
+        <el-form-item label="二次确认">
+          <el-input v-model="disburseForm.secondary_auth_token" placeholder="MOCK-APPROVED" />
+        </el-form-item>
+      </el-form>
+
+      <div class="precheck-actions">
+        <el-button :loading="preCheckLoading" @click="runPreCheck">执行前置校验</el-button>
+        <el-button
+          v-if="canDisburse"
+          type="primary"
+          :loading="disburseLoading"
+          :disabled="!preCheckResult?.passed"
+          @click="runDisburse"
+        >
+          确认放款
+        </el-button>
+      </div>
+
+      <el-alert
+        v-if="preCheckResult"
+        :type="preCheckResult.passed ? 'success' : 'error'"
+        :closable="false"
+        show-icon
+        class="precheck-summary"
+        :title="preCheckResult.passed ? '前置校验通过，可执行放款' : '前置校验未通过'"
+      />
+
+      <el-table v-if="preCheckResult" :data="preCheckResult.checks" size="small" stripe class="precheck-table">
+        <el-table-column prop="code" label="检查项" width="160" />
+        <el-table-column prop="result" label="结果" width="100">
+          <template #default="{ row }">
+            <el-tag
+              size="small"
+              :type="row.result === 'PASSED' ? 'success' : row.result === 'WARNING' ? 'warning' : 'danger'"
+            >
+              {{ row.result }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="message" label="说明" min-width="200" />
+      </el-table>
+    </el-drawer>
   </div>
 </template>
 
@@ -123,11 +198,22 @@ import { ElMessage } from 'element-plus'
 import {
   approveFinanceApplication,
   createFinanceApplication,
+  disburseFinanceApplication,
   listFinanceApplications,
+  preCheckFinanceApplication,
   submitFinanceApplication,
-  type FinanceApplication
+  type FinanceApplication,
+  type FinancePreCheckResult
 } from '../api/finance'
 import { financeStatusLabel, financeStatusTagType, FINANCE_REPAYABLE_STATUSES } from '../constants/financeDict'
+import { usePermission } from '../composables/usePermission'
+import { formatMoney } from '../utils/format'
+import { apiErrorMessage } from '../utils/apiError'
+import ListEmptyState from '../components/ListEmptyState.vue'
+
+const { hasPermission } = usePermission()
+const canPreCheck = computed(() => hasPermission('FINANCE_PRECHECK') || hasPermission('FINANCE_DISBURSE'))
+const canDisburse = computed(() => hasPermission('FINANCE_DISBURSE'))
 
 const route = useRoute()
 const router = useRouter()
@@ -135,6 +221,21 @@ const router = useRouter()
 const loading = ref(false)
 const applications = ref<FinanceApplication[]>([])
 const showCreate = ref(false)
+const showDisburse = ref(false)
+const preCheckLoading = ref(false)
+const disburseLoading = ref(false)
+const disburseTarget = ref<FinanceApplication | null>(null)
+const preCheckResult = ref<FinancePreCheckResult | null>(null)
+const disburseForm = reactive({
+  disburse_amount: '',
+  currency: 'CNY',
+  value_date: '2026-06-30',
+  payer_account_id: 'ACC_FUNDING_001',
+  receiver_account_id: 'ACC_MEMBER_001',
+  funding_channel: 'INTERNAL_ACCOUNT',
+  secondary_auth_token: 'MOCK-APPROVED',
+  idempotency_key: ''
+})
 const form = reactive({
   product_type: 'ORDER_FINANCE',
   source_type: 'ORDER',
@@ -187,8 +288,8 @@ async function load() {
     const res = await listFinanceApplications({ page_no: 1, page_size: 50 })
     if (res.success) applications.value = res.data?.records || []
     else ElMessage.error(res.message || '加载失败')
-  } catch (e: any) {
-    ElMessage.error(e.message || '加载失败')
+  } catch (e: unknown) {
+    ElMessage.error(apiErrorMessage(e, '加载失败'))
   } finally {
     loading.value = false
   }
@@ -230,6 +331,71 @@ async function onApprove(id: string) {
   }
 }
 
+function openDisburse(row: FinanceApplication) {
+  disburseTarget.value = row
+  preCheckResult.value = null
+  disburseForm.disburse_amount = row.approved_amount || row.apply_amount
+  disburseForm.idempotency_key = `UI-${row.id}-${Date.now()}`
+  showDisburse.value = true
+}
+
+function preCheckPayload() {
+  return {
+    disburse_amount: disburseForm.disburse_amount,
+    currency: disburseForm.currency,
+    value_date: disburseForm.value_date,
+    payer_account_id: disburseForm.payer_account_id,
+    receiver_account_id: disburseForm.receiver_account_id,
+    funding_channel: disburseForm.funding_channel,
+    idempotency_key: disburseForm.idempotency_key,
+    secondary_auth_token: disburseForm.secondary_auth_token
+  }
+}
+
+async function runPreCheck() {
+  if (!disburseTarget.value) return
+  preCheckLoading.value = true
+  try {
+    const res = await preCheckFinanceApplication(disburseTarget.value.id, preCheckPayload())
+    if (!res.success) throw new Error(res.message)
+    preCheckResult.value = res.data
+  } catch (e: any) {
+    ElMessage.error(e.message || '前置校验失败')
+  } finally {
+    preCheckLoading.value = false
+  }
+}
+
+async function runDisburse() {
+  if (!disburseTarget.value || !preCheckResult.value?.passed) return
+  disburseLoading.value = true
+  try {
+    const res = await disburseFinanceApplication(
+      disburseTarget.value.id,
+      {
+        disburse_amount: disburseForm.disburse_amount,
+        currency: disburseForm.currency,
+        value_date: disburseForm.value_date,
+        payer_account_id: disburseForm.payer_account_id,
+        receiver_account_id: disburseForm.receiver_account_id,
+        funding_channel: disburseForm.funding_channel
+      },
+      {
+        idempotencyKey: disburseForm.idempotency_key,
+        secondaryAuthToken: disburseForm.secondary_auth_token
+      }
+    )
+    if (!res.success) throw new Error(res.message)
+    ElMessage.success('放款已提交')
+    showDisburse.value = false
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e.message || '放款失败')
+  } finally {
+    disburseLoading.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -249,5 +415,16 @@ onMounted(load)
 }
 :deep(.row-highlight) {
   background-color: var(--el-color-primary-light-9) !important;
+}
+.precheck-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.precheck-summary {
+  margin-bottom: 12px;
+}
+.precheck-table {
+  margin-top: 8px;
 }
 </style>

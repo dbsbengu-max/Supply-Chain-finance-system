@@ -5,8 +5,11 @@ import com.scf.common.dto.PageResponse;
 import com.scf.finance.dto.FinanceCreateRequest;
 import com.scf.finance.dto.FinanceDisburseRequest;
 import com.scf.finance.dto.FinanceDisburseView;
+import com.scf.finance.dto.FinancePreCheckDtos.FinancePreCheckRequest;
+import com.scf.finance.dto.FinancePreCheckDtos.FinancePreCheckResponse;
 import com.scf.finance.dto.FinanceView;
 import com.scf.finance.service.FinanceApplicationService;
+import com.scf.finance.service.FinancePreCheckService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
@@ -16,9 +19,13 @@ import org.springframework.web.bind.annotation.*;
 public class FinanceApplicationController {
 
     private final FinanceApplicationService financeApplicationService;
+    private final FinancePreCheckService financePreCheckService;
 
-    public FinanceApplicationController(FinanceApplicationService financeApplicationService) {
+    public FinanceApplicationController(
+            FinanceApplicationService financeApplicationService,
+            FinancePreCheckService financePreCheckService) {
         this.financeApplicationService = financeApplicationService;
+        this.financePreCheckService = financePreCheckService;
     }
 
     @GetMapping
@@ -51,6 +58,14 @@ public class FinanceApplicationController {
     @PostMapping("/{id}/approve")
     public ApiResponse<FinanceView> approve(@PathVariable String id, HttpServletRequest request) {
         return ApiResponse.ok(financeApplicationService.approve(id), request.getHeader("X-Request-Id"));
+    }
+
+    @PostMapping("/{id}/pre-check")
+    public ApiResponse<FinancePreCheckResponse> preCheck(
+            @PathVariable String id,
+            @RequestBody(required = false) FinancePreCheckRequest body,
+            HttpServletRequest request) {
+        return ApiResponse.ok(financePreCheckService.preCheck(id, body), request.getHeader("X-Request-Id"));
     }
 
     @PostMapping("/{id}/disburse")

@@ -50,6 +50,7 @@ public class FinanceApplicationService {
     private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
     private final DisburseCompletionService disburseCompletionService;
+    private final FinancePreCheckService financePreCheckService;
 
     public FinanceApplicationService(
             FnFinanceApplicationRepository repository,
@@ -61,7 +62,8 @@ public class FinanceApplicationService {
             SecondaryAuthVerifier secondaryAuthVerifier,
             IdempotencyService idempotencyService,
             ObjectMapper objectMapper,
-            DisburseCompletionService disburseCompletionService) {
+            DisburseCompletionService disburseCompletionService,
+            FinancePreCheckService financePreCheckService) {
         this.repository = repository;
         this.disbursementRepository = disbursementRepository;
         this.accountRepository = accountRepository;
@@ -72,6 +74,7 @@ public class FinanceApplicationService {
         this.idempotencyService = idempotencyService;
         this.objectMapper = objectMapper;
         this.disburseCompletionService = disburseCompletionService;
+        this.financePreCheckService = financePreCheckService;
     }
 
     public PageResponse<FinanceView> list(int pageNo, int pageSize, String financeStatus) {
@@ -226,12 +229,13 @@ public class FinanceApplicationService {
                 "FINANCE_DISBURSE",
                 requestBody,
                 FinanceDisburseView.class,
-                () -> doDisburse(id, request, idempotencyKey));
+                () -> doDisburse(id, request, idempotencyKey, requestBody));
         return result.replay() ? result.value().withIdempotentReplay(true) : result.value();
     }
 
     @Transactional
-    protected FinanceDisburseView doDisburse(String id, FinanceDisburseRequest request, String idempotencyKey) {
+    protected FinanceDisburseView doDisburse(
+            String id, FinanceDisburseRequest request, String idempotencyKey, String idempotencyRequestBody) {
         FnFinanceApplication app = loadAccessibleForUpdate(id);
         assertDisburseScope(app);
 
@@ -246,6 +250,8 @@ public class FinanceApplicationService {
         if (disburseAmount.compareTo(remaining) != 0) {
             throw new BusinessException("VALID_400", "V1.1 仅支持一次性全额放款，放款金额必须等于可放款余额", 400);
         }
+
+        financePreCheckService.assertDisbursePreCheck(app, request, idempotencyKey, idempotencyRequestBody);
 
         if (!app.getCurrency().equals(request.currency())) {
             throw new BusinessException("VALID_400", "币种与融资申请不一致", 400);

@@ -59,3 +59,60 @@ export async function approveFinanceApplication(id: string) {
   const res = await http.post(`/finance/applications/${id}/approve`)
   return res.data
 }
+
+export interface FinancePreCheckItem {
+  code: string
+  result: 'PASSED' | 'FAILED' | 'WARNING'
+  message: string
+}
+
+export interface FinancePreCheckResult {
+  finance_id: string
+  passed: boolean
+  checks: FinancePreCheckItem[]
+  document_validation?: {
+    passed: boolean
+    missing?: unknown[]
+    pending_review?: unknown[]
+    warnings?: unknown[]
+  }
+}
+
+export async function preCheckFinanceApplication(
+  id: string,
+  body?: {
+    disburse_amount?: string
+    currency?: string
+    value_date?: string
+    payer_account_id?: string
+    receiver_account_id?: string
+    funding_channel?: string
+    idempotency_key?: string
+    secondary_auth_token?: string
+  }
+) {
+  const res = await http.post(`/finance/applications/${id}/pre-check`, body ?? {})
+  return res.data
+}
+
+export async function disburseFinanceApplication(
+  id: string,
+  body: {
+    disburse_amount: string
+    currency: string
+    value_date: string
+    payer_account_id: string
+    receiver_account_id: string
+    funding_channel: string
+    remark?: string
+  },
+  headers?: { idempotencyKey?: string; secondaryAuthToken?: string }
+) {
+  const res = await http.post(`/finance/applications/${id}/disburse`, body, {
+    headers: {
+      ...(headers?.idempotencyKey ? { 'X-Idempotency-Key': headers.idempotencyKey } : {}),
+      ...(headers?.secondaryAuthToken ? { 'X-Secondary-Auth-Token': headers.secondaryAuthToken } : {})
+    }
+  })
+  return res.data
+}
