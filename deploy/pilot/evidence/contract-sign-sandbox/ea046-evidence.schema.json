@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scf.local/schemas/ea046-evidence.schema.json",
+  "title": "EA-046 Vendor Sandbox Evidence",
+  "type": "object",
+  "required": ["ea_id", "run_id", "environment", "config_snapshot", "scenarios", "verdict"],
+  "properties": {
+    "ea_id": { "const": "EA-046" },
+    "run_id": { "type": "string", "pattern": "^ea046-" },
+    "environment": { "type": "string" },
+    "git_ref": { "type": "string" },
+    "vendor": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "doc_version": { "type": "string" },
+        "base_url": { "type": "string" },
+        "callback_url": { "type": "string" }
+      }
+    },
+    "config_snapshot": {
+      "type": "object",
+      "properties": {
+        "default_provider": { "type": "string" },
+        "callback_verification_mode": { "type": "string" },
+        "outbound_auth_mode": { "type": "string" },
+        "compensation_pool_enabled": { "type": "boolean" },
+        "provider_configured": { "type": "boolean" }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "passed"],
+        "properties": {
+          "id": { "type": "string" },
+          "passed": { "type": "boolean" },
+          "external_sign_ref": { "type": "string" },
+          "platform_trace_id": { "type": "string" },
+          "provider_request_id": { "type": "string" },
+          "provider_trace_id": { "type": "string" },
+          "api_request_id": { "type": "string" },
+          "compensation_id": { "type": "string" },
+          "error": { "type": "string" },
+          "artifacts": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "tests": {
+      "type": "object",
+      "properties": {
+        "mvn_regression": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "verdict": { "enum": ["PASS", "FAIL"] },
+    "signed_off_by": { "type": "string" },
+    "signed_off_at": { "type": "string", "format": "date-time" }
+  }
+}

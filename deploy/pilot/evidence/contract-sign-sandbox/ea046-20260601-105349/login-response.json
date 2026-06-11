@@ -1,0 +1,26 @@
+﻿{
+    "success":  true,
+    "code":  "OK",
+    "message":  "success",
+    "data":  {
+                 "accessToken":  "***REDACTED***",
+                 "userId":  "U001",
+                 "loginName":  "platform_admin",
+                 "userName":  "å¹³å°ç®¡çå",
+                 "identities":  [
+                                    {
+                                        "identityId":  "ID001",
+                                        "operatorId":  "OP001",
+                                        "projectId":  "PJ001",
+                                        "enterpriseId":  "ENT_CORE_001",
+                                        "roleId":  "ROLE_PLATFORM_ADMIN",
+                                        "roleCode":  "PLATFORM_ADMIN",
+                                        "roleName":  "å¹³å°è¿è¥ç®¡çå",
+                                        "isDefault":  true
+                                    }
+                                ],
+                 "currentIdentityId":  "ID001"
+             },
+    "requestId":  "ea046-20260601-105349-LOGIN",
+    "timestamp":  "2026-06-01T02:53:50.152042Z"
+}

@@ -1,0 +1,96 @@
+﻿{
+    "provider_request_id":  "VREQ-2e28f5444c6e40f3b20c989923d217be",
+    "run_id":  "ea046-20260601-105349",
+    "platform_trace_id":  "ea046-20260601-105349-INITIATE",
+    "signed_off_by":  "local-sandbox-runner",
+    "scenarios":  [
+                      {
+                          "api_request_id":  "",
+                          "id":  "HEALTH",
+                          "passed":  true
+                      },
+                      {
+                          "id":  "LOGIN",
+                          "passed":  true
+                      },
+                      {
+                          "provider_configured":  true,
+                          "api_request_id":  "ea046-20260601-105349-CONFIG",
+                          "id":  "CONFIG",
+                          "passed":  true
+                      },
+                      {
+                          "document_id":  "DOC_EA040_SIGN_OK",
+                          "id":  "INITIATE",
+                          "passed":  true,
+                          "platform_trace_id":  "ea046-20260601-105349-INITIATE",
+                          "external_sign_ref":  "HTTP-FLOW-2e28f5444c6e40f3b20c989923d217be",
+                          "api_request_id":  "ea046-20260601-105349-INITIATE"
+                      },
+                      {
+                          "external_sign_ref":  "HTTP-FLOW-2e28f5444c6e40f3b20c989923d217be",
+                          "id":  "LOOKUP",
+                          "passed":  true
+                      },
+                      {
+                          "external_sign_ref":  "HTTP-FLOW-2e28f5444c6e40f3b20c989923d217be",
+                          "id":  "QUERY_STATUS",
+                          "passed":  true
+                      },
+                      {
+                          "idempotency_key":  "EA046-ea046-20260601-105349-CB-1",
+                          "external_sign_ref":  "HTTP-FLOW-2e28f5444c6e40f3b20c989923d217be",
+                          "id":  "CALLBACK_REPLAY",
+                          "passed":  true
+                      },
+                      {
+                          "id":  "CALLBACK_IDEMPOTENT",
+                          "idempotent_replay":  true,
+                          "passed":  true
+                      },
+                      {
+                          "external_sign_ref":  "EA046-UNKNOWN-ea046-20260601-105349",
+                          "id":  "COMPENSATION_UNKNOWN_REF",
+                          "passed":  true
+                      },
+                      {
+                          "compensation_id":  "7608dea70ca948f683d00f8ebab85514",
+                          "id":  "COMPENSATION_RETRY",
+                          "passed":  true
+                      },
+                      {
+                          "compensation_id":  "7608dea70ca948f683d00f8ebab85514",
+                          "id":  "SAGA_QUERY_SIGN_STATUS",
+                          "passed":  true
+                      },
+                      {
+                          "external_sign_ref":  "HTTP-FLOW-2e28f5444c6e40f3b20c989923d217be",
+                          "id":  "DB_TRACE_EXPORT",
+                          "passed":  true
+                      }
+                  ],
+    "signed_off_at":  "2026-06-01T02:53:51Z",
+    "environment":  "local-quasi-sandbox",
+    "config_snapshot":  {
+                            "outbound_auth_mode":  "HMAC_SHA256",
+                            "compensation_pool_enabled":  true,
+                            "default_provider":  "ESIGN_HTTP",
+                            "callback_verification_mode":  "TIMESTAMP_NONCE_SIGNATURE",
+                            "provider_configured":  true
+                        },
+    "tests":  {
+                  "mvn_regression":  "165/165 (EA-045 baseline)",
+                  "notes":  "Run EA019RegressionRunner before sandbox sign-off"
+              },
+    "verdict":  "PASS",
+    "provider_trace_id":  "VTR-2e28f5444c6e40f3b20c989923d217be",
+    "ea_id":  "EA-046",
+    "vendor":  {
+                   "base_url":  "http://127.0.0.1:57733",
+                   "name":  "HttpEsignVendorStub",
+                   "callback_url":  "",
+                   "doc_version":  "EA-046-local"
+               },
+    "external_sign_ref":  "HTTP-FLOW-2e28f5444c6e40f3b20c989923d217be",
+    "git_ref":  ""
+}

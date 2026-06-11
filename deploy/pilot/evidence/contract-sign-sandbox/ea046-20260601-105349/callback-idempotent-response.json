@@ -1,0 +1,1 @@
+﻿{"success":true,"code":"OK","message":"success","data":{"document_id":"DOC_EA040_SIGN_OK","sign_status":"SIGNED","contract_status":"SIGNED","external_sign_ref":"HTTP-FLOW-2e28f5444c6e40f3b20c989923d217be","task_status":"SIGNED","idempotent_replay":true},"requestId":null,"timestamp":"2026-06-01T02:53:51.174011500Z"}

@@ -1,0 +1,56 @@
+﻿{
+    "git_ref":  "",
+    "ea_id":  "EA-046",
+    "config_snapshot":  {
+                            "outbound_auth_mode":  "HMAC_SHA256",
+                            "compensation_pool_enabled":  true,
+                            "default_provider":  "ESIGN_HTTP",
+                            "callback_verification_mode":  "TIMESTAMP_NONCE_SIGNATURE",
+                            "provider_configured":  false
+                        },
+    "signed_off_by":  "local-sandbox-runner",
+    "scenarios":  [
+                      {
+                          "api_request_id":  "",
+                          "id":  "HEALTH",
+                          "passed":  true
+                      },
+                      {
+                          "id":  "LOGIN",
+                          "passed":  true
+                      },
+                      {
+                          "provider_configured":  false,
+                          "api_request_id":  "ea046-20260601-104842-CONFIG",
+                          "id":  "CONFIG",
+                          "passed":  false
+                      },
+                      {
+                          "document_id":  "DOC_EA040_SIGN_OK",
+                          "id":  "INITIATE",
+                          "passed":  false,
+                          "platform_trace_id":  null,
+                          "external_sign_ref":  null,
+                          "api_request_id":  ""
+                      },
+                      {
+                          "external_sign_ref":  "EA046-UNKNOWN-ea046-20260601-104842",
+                          "id":  "COMPENSATION_UNKNOWN_REF",
+                          "passed":  false
+                      }
+                  ],
+    "environment":  "local-quasi-sandbox",
+    "tests":  {
+                  "mvn_regression":  "165/165 (EA-045 baseline)",
+                  "notes":  "Run EA019RegressionRunner before sandbox sign-off"
+              },
+    "signed_off_at":  "2026-06-01T02:48:43Z",
+    "run_id":  "ea046-20260601-104842",
+    "verdict":  "FAIL",
+    "vendor":  {
+                   "base_url":  "http://127.0.0.1:57579",
+                   "name":  "HttpEsignVendorStub",
+                   "callback_url":  "",
+                   "doc_version":  "EA-046-local"
+               }
+}

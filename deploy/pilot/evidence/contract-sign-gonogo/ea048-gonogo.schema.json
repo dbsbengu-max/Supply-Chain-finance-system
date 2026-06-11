@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scf.local/schemas/ea048-gonogo.schema.json",
+  "title": "EA-048 Real Vendor Go/No-Go Bundle",
+  "type": "object",
+  "required": ["ea_id", "run_id", "ea046", "ea047", "checks", "verdict"],
+  "properties": {
+    "ea_id": { "const": "EA-048" },
+    "run_id": { "type": "string", "pattern": "^ea048-" },
+    "environment": { "type": "string" },
+    "vendor": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "doc_version": { "type": "string" },
+        "base_url": { "type": "string" },
+        "callback_url": { "type": "string" },
+        "ticket": { "type": "string" }
+      }
+    },
+    "ea046": {
+      "type": "object",
+      "required": ["verdict"],
+      "properties": {
+        "run_id": { "type": "string" },
+        "verdict": { "enum": ["PASS", "FAIL", "SKIP"] },
+        "evidence_path": { "type": "string" },
+        "external_sign_ref": { "type": "string" },
+        "provider_request_id": { "type": "string" },
+        "provider_trace_id": { "type": "string" }
+      }
+    },
+    "ea047": {
+      "type": "object",
+      "properties": {
+        "phase": { "type": "string" },
+        "verdict": { "enum": ["PASS", "FAIL", "SKIP"] }
+      }
+    },
+    "rollout_plan": { "type": "object" },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "pass"],
+        "properties": {
+          "id": { "type": "string" },
+          "pass": { "type": "boolean" },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "verdict": { "enum": ["GO", "NO-GO"] },
+    "signed_off_by": { "type": "string" },
+    "signed_off_role": { "type": "string" },
+    "signed_off_at": { "type": "string" },
+    "next_step_on_go": { "type": "array", "items": { "type": "string" } }
+  }
+}
